@@ -1,0 +1,32 @@
+name: Upstream drift check
+
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compare upstream master
+        shell: bash
+        run: |
+          set -euo pipefail
+          git remote add upstream-check https://github.com/notepad-plus-plus/notepad-plus-plus.git
+          git fetch --no-tags upstream-check master
+          local_commit=$(git ls-remote origin refs/heads/master | cut -f1)
+          upstream_commit=$(git rev-parse upstream-check/master)
+          {
+            echo "## Notepad++ upstream drift"
+            echo
+            echo "Fork mirror: \`$local_commit\`"
+            echo "Upstream: \`$upstream_commit\`"
+            echo "Commits behind: $(git rev-list --count "$local_commit..$upstream_commit")"
+          } >> "$GITHUB_STEP_SUMMARY"

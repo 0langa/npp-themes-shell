@@ -1,3 +1,9 @@
+# NppThemes Shell bootstrap
+
+> **Independent work in progress.** This public fork is the maintained full-window host for [NppThemes](https://github.com/0langa/npp-themes). It is not an official Notepad++ build and currently contains an unmodified, pinned upstream baseline only. Do not distribute its binaries as NppThemes Shell yet.
+
+Product development occurs on `shell/main`; `master` remains an untouched upstream mirror. The initial baseline is official Notepad++ v8.9.7 commit `6634650414ff91220a4c353b7fe5ad741af0f9f9`. See [NPP_THEMES_SHELL.md](NPP_THEMES_SHELL.md) for ownership, synchronization, branding, and safety rules.
+
 What is Notepad++ ?
 ===================
 
