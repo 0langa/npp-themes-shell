@@ -11,3 +11,9 @@ MSBuild.exe PowerEditor\visual.net\notepadPlus.sln /m /p:Configuration=Release /
 Produced `PowerEditor\bin64\Notepad++.exe` reports file/product version `8.9.7.0`. This proves a local clean baseline only. It is not a reproducibility, branding, security, or distribution qualification.
 
 An isolated startup smoke with `-multiInst -noPlugin -nosession` and a temporary settings directory also passed; the process remained healthy and accepted a normal main-window close.
+
+## Shared-core integration
+
+The commit-pinned NppThemesCore subtree is compiled directly by `notepadPlus.vcxproj` with the solution's existing C++20, warnings-as-errors, vendored nlohmann JSON, and vendored pugixml configuration.
+
+The first integration build exposed that upstream defines `PUGIXML_NO_XPATH`. NppThemesCore removed its XPath dependency in canonical source commit `43fe41b27d0b35b1955bbaa2d2eea321888e1edf`; the plugin core tests passed, the corrected split `0f272a5e82f272cf5c7bc57fc070befe5efcafea` was pulled, and the x64 Release Shell build then passed. This is the intended shared-core compatibility loop: fix canonically, test there, update the pinned subtree, then qualify the shell.
