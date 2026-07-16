@@ -17,3 +17,7 @@ An isolated startup smoke with `-multiInst -noPlugin -nosession` and a temporary
 The commit-pinned NppThemesCore subtree is compiled directly by `notepadPlus.vcxproj` with the solution's existing C++20, warnings-as-errors, vendored nlohmann JSON, and vendored pugixml configuration.
 
 The first integration build exposed that upstream defines `PUGIXML_NO_XPATH`. NppThemesCore removed its XPath dependency in canonical source commit `43fe41b27d0b35b1955bbaa2d2eea321888e1edf`; the plugin core tests passed, the corrected split `0f272a5e82f272cf5c7bc57fc070befe5efcafea` was pulled, and the x64 Release Shell build then passed. This is the intended shared-core compatibility loop: fix canonically, test there, update the pinned subtree, then qualify the shell.
+
+Win32 Release also builds with the shared core and passes isolated startup smoke as version 8.9.7.0.
+
+ARM64 cross-build is locally blocked before compilation because the installed VS 2022 v143 workload has no ARM64 compiler or libraries (`Hostx64\arm64\cl.exe` and `lib\arm64` are absent). Install the ARM64 C++ build tools component, rerun Release/ARM64, then perform the separate physical ARM64 runtime check. This is an environment qualification gap, not a source compile failure.
