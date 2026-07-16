@@ -18,7 +18,7 @@ namespace {
 
 struct RoleBinding {
     std::string_view name;
-    Color ShellPalette::* member;
+    Color ShellPalette::*member;
 };
 
 constexpr std::array<RoleBinding, 45> shellColorRoles = {
