@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 2,
+  "id": "fixture.v2-compact",
+  "name": "V2 Compact Fixture",
+  "mode": "dark",
+  "palette": {
+    "background": "#11151C",
+    "surface": "#1A202B",
+    "foreground": "#D8DEE9",
+    "muted": "#7D899A",
+    "accent": "#7DD3FC",
+    "keyword": "#C4A7E7",
+    "string": "#A6DA95",
+    "number": "#F5A97F",
+    "comment": "#6E8299",
+    "function": "#8BD5CA",
+    "type": "#91D7E3",
+    "operator": "#F0C6C6",
+    "selection": "#294B63",
+    "caret": "#F4F7FB",
+    "currentLine": "#171E29",
+    "whitespace": "#445064"
+  },
+  "typography": {
+    "fontFamily": "Cascadia Mono",
+    "fontSizePt": 11
+  },
+  "shell": {
+    "density": "compact",
+    "typography": {
+      "fontFamily": "Segoe UI",
+      "fontSizePt": 9
+    },
+    "colors": {
+      "shell.caption.background": "#20242C"
+    }
+  }
+}
