@@ -20,4 +20,16 @@ The first integration build exposed that upstream defines `PUGIXML_NO_XPATH`. Np
 
 Win32 Release also builds with the shared core and passes isolated startup smoke as version 8.9.7.0.
 
-ARM64 cross-build is locally blocked before compilation because the installed VS 2022 v143 workload has no ARM64 compiler or libraries (`Hostx64\arm64\cl.exe` and `lib\arm64` are absent). Install the ARM64 C++ build tools component, rerun Release/ARM64, then perform the separate physical ARM64 runtime check. This is an environment qualification gap, not a source compile failure.
+ARM64 cross-build remains unavailable locally because the installed VS 2022 v143 workload has no ARM64 compiler or libraries (`Hostx64\arm64\cl.exe` and `lib\arm64` are absent). NppThemes Shell CI therefore performs compile-only Release qualification on GitHub's Windows runner for x64, Win32, and ARM64. Physical ARM64 startup, rendering, DPI, and accessibility checks remain deferred until hardware is available; compile success does not replace those runtime gates.
+
+## ThemeService foundation
+
+The first fork-owned ThemeService foundation compiles inside both local Release architectures. Its standalone behavior suite covers validated initialization, atomic invalid-profile rejection, preview cancel/commit, subscription lifetime, generation changes, and forced High Contrast native fallback. The cross-host conformance suite compiles directly from the pinned shared subtree and compares canonical output with its golden fixture.
+
+Local verification commands:
+
+```powershell
+cmake -S PowerEditor\Test\NppThemes -B out\theme-tests -A x64
+cmake --build out\theme-tests --config Release --parallel
+ctest --test-dir out\theme-tests -C Release --output-on-failure
+```

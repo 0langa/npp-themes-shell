@@ -10,14 +10,25 @@ Status: unmodified upstream baseline; not distributable as an NppThemes product.
 - Product branch: `shell/main`
 - Upstream mirror branch: `master`
 - Shared core: <https://github.com/0langa/npp-themes>
-- Shared source commit: `c4d42c3c2fb81160632c29d78f3ae4ec7fd21e01`
-- Imported subtree split: `9ecb55a09ae9cae94a4435288d973db58004b764`
+- Shared source commit: `d8a66fdb4b279918617d558426262e10a4694843`
+- Imported subtree split: `fc616dac6242a788cbe260c75232daf0ef30d4ca`
 
 ## Ownership
 
 NppThemes Shell owns profile persistence, Theme Studio, preview/apply/restore, ThemeService, frame and host-control rendering. It imports the shared profile/token core through a reviewed commit-pinned Git subtree under `PowerEditor/src/NppThemesCore`. It does not load or bundle the stock `NppThemes.dll`.
 
 The imported core is compiled directly in the existing Notepad++ solution using upstream's vendored nlohmann JSON and pugixml. Update it only with `git subtree pull --prefix=PowerEditor/src/NppThemesCore ... --squash`, then record and verify the new split commit through the cross-host conformance suite.
+
+## Current theme foundation
+
+- `PowerEditor/src/NppThemes/ThemeService.*` validates and resolves profiles before mutation.
+- Preview/apply/cancel is transactional; rejected profiles preserve active profile, tokens, mode, and generation.
+- Windows High Contrast forces native render mode and cannot be overridden by profile changes.
+- Typed subscribers receive one generation-stamped snapshot per visible state change.
+- Shell-owned tests compile the imported conformance executable and byte-check canonical tokens after checkout line-ending normalization.
+- Dedicated Shell CI compiles Release x64, Win32, and ARM64 without uploading unofficial binaries. Physical ARM64 runtime remains a separate release-qualification gate.
+
+ThemeService is compiled into the application but not yet connected to app-owned controls. Surface adapters and startup persistence remain Phase 4 work.
 
 ## Safety and release rules
 

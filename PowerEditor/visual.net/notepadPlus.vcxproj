@@ -176,6 +176,7 @@
     <ClCompile Include="..\src\NppThemesCore\src\ShellPalette.cpp" />
     <ClCompile Include="..\src\NppThemesCore\src\ThemeProfile.cpp" />
     <ClCompile Include="..\src\NppThemesCore\src\ThemeXmlCompiler.cpp" />
+    <ClCompile Include="..\src\NppThemes\ThemeService.cpp" />
     <ClCompile Include="..\src\WinControls\ToolBar\ToolBar.cpp" />
     <ClCompile Include="..\src\WinControls\ToolTip\ToolTip.cpp" />
     <ClCompile Include="..\src\WinControls\TrayIcon\trayIconControler.cpp" />
@@ -344,6 +345,7 @@
     <ClInclude Include="..\src\NppThemesCore\include\nppthemes\ShellPalette.h" />
     <ClInclude Include="..\src\NppThemesCore\include\nppthemes\ThemeProfile.h" />
     <ClInclude Include="..\src\NppThemesCore\include\nppthemes\ThemeXmlCompiler.h" />
+    <ClInclude Include="..\src\NppThemes\ThemeService.h" />
     <ClInclude Include="..\src\WinControls\ToolBar\ToolBar.h" />
     <ClInclude Include="..\src\WinControls\ToolTip\ToolTip.h" />
     <ClInclude Include="..\src\WinControls\TrayIcon\trayIconControler.h" />
