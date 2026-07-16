@@ -34,6 +34,7 @@
 #include "Notepad_plus_msgs.h"
 #include "NppConstants.h"
 #include "NppDarkMode.h"
+#include "NppThemes/ThemeRuntime.h"
 #include "Parameters.h"
 #include "Processus.h"
 #include "Win32Exception.h" //Win32 exception
@@ -677,6 +678,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance
 	NppGUI & nppGui = nppParameters.getNppGUI();
 
 	NppDarkMode::initDarkMode();
+	(void)NppThemesShell::themeRuntime().initialize(nppParameters.getUserPath(), NppDarkMode::isHighContrast());
 	DPIManagerV2::initDpiAPI();
 
 	bool doUpdateNpp = nppGui._autoUpdateOpt._doAutoUpdate != NppGUI::autoupdate_disabled;

@@ -539,6 +539,11 @@ namespace NppDarkMode
 		return _options.enablePlugin;
 	}
 
+	bool isHighContrast()
+	{
+		return IsHighContrast();
+	}
+
 	bool isExperimentalActive()
 	{
 		return g_darkModeEnabled;

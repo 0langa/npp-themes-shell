@@ -33,8 +33,18 @@ add_executable(NppThemesThemeServiceTests
 target_include_directories(NppThemesThemeServiceTests PRIVATE "${NPP_SOURCE_DIR}")
 target_link_libraries(NppThemesThemeServiceTests PRIVATE NppThemesShellCore)
 
+add_executable(NppThemesStartupProfileTests
+    StartupProfileTests.cpp
+    "${NPP_SOURCE_DIR}/NppThemes/DarkModeThemeAdapter.cpp"
+    "${NPP_SOURCE_DIR}/NppThemes/StartupProfileStore.cpp"
+    "${NPP_SOURCE_DIR}/NppThemes/ThemeRuntime.cpp"
+    "${NPP_SOURCE_DIR}/NppThemes/ThemeService.cpp"
+)
+target_include_directories(NppThemesStartupProfileTests PRIVATE "${NPP_SOURCE_DIR}")
+target_link_libraries(NppThemesStartupProfileTests PRIVATE NppThemesShellCore)
+
 if(MSVC)
-    foreach(target NppThemesShellCore NppThemesConformance NppThemesThemeServiceTests)
+    foreach(target NppThemesShellCore NppThemesConformance NppThemesThemeServiceTests NppThemesStartupProfileTests)
         target_compile_options(${target} PRIVATE /W4 /WX /permissive- /utf-8 /EHsc)
     endforeach()
 endif()
@@ -44,3 +54,4 @@ add_test(NAME shell-conformance COMMAND NppThemesConformance --check
     "${NPP_THEMES_CORE_DIR}/tests/fixtures/profile-v2.expected.json"
 )
 add_test(NAME theme-service COMMAND NppThemesThemeServiceTests)
+add_test(NAME startup-profile COMMAND NppThemesStartupProfileTests)

@@ -92,6 +92,7 @@ namespace NppDarkMode
 	bool isEnabledForPlugins();
 	bool isExperimentalActive();
 	bool isExperimentalSupported();
+	bool isHighContrast();
 
 	bool isWindowsModeEnabled();
 	void setWindowsMode(bool enable);

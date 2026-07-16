@@ -1,6 +1,6 @@
 # NppThemes Shell bootstrap contract
 
-Status: unmodified upstream baseline; not distributable as an NppThemes product.
+Status: active Shell development; not distributable as an NppThemes product.
 
 ## Baseline
 
@@ -29,7 +29,17 @@ The imported core is compiled directly in the existing Notepad++ solution using 
 - Shell-owned tests compile the imported conformance executable and byte-check canonical tokens after checkout line-ending normalization.
 - Dedicated Shell CI compiles Release x64, Win32, and ARM64 without uploading unofficial binaries. Physical ARM64 runtime remains a separate release-qualification gate.
 
-ThemeService and first host palette adapter compile into the application. Adapter activation, startup persistence, user profile selection, and additional surface adapters remain Phase 4 work; native behavior remains active until that explicit runtime path exists.
+ThemeService, startup persistence, and first host palette adapter compile into the application. User profile selection UI and additional surface adapters remain Phase 4 work.
+
+## Startup profile contract
+
+Shell looks for `NppThemes\active-profile.json` below Notepad++'s resolved settings root. Installed, portable, cloud, and `-settingsDir` modes therefore remain isolated. Missing file keeps native rendering and creates no directory or marker.
+
+Startup accepts only a regular JSON file up to 1 MiB. Profile parsing, migration, palette derivation, and contrast validation finish before host mutation. Shell then durably creates `NppThemes\apply.incomplete`, activates ThemeService and host adapter, and removes marker only after success.
+
+Marker found on next launch means previous activation may have crashed. Shell deletes marker, skips custom activation for that launch, and remains native. Following launch may try profile again. Invalid, oversized, unreadable, or unsafe-path input remains native.
+
+Forced Windows High Contrast switches active runtime to native colors immediately and restores custom palette only after High Contrast ends. Deleting or renaming `active-profile.json` disables startup activation on next launch. Current adapter affects controls already using Notepad++ dark-mode renderer; automatic light/dark renderer coordination and selection UI remain upcoming.
 
 ## Safety and release rules
 

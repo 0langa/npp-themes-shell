@@ -178,6 +178,9 @@
     <ClCompile Include="..\src\NppThemesCore\src\ThemeXmlCompiler.cpp" />
     <ClCompile Include="..\src\NppThemes\DarkModeThemeAdapter.cpp" />
     <ClCompile Include="..\src\NppThemes\NppDarkModePaletteHost.cpp" />
+    <ClCompile Include="..\src\NppThemes\StartupProfileStore.cpp" />
+    <ClCompile Include="..\src\NppThemes\ThemeRuntime.cpp" />
+    <ClCompile Include="..\src\NppThemes\ThemeRuntimeHost.cpp" />
     <ClCompile Include="..\src\NppThemes\ThemeService.cpp" />
     <ClCompile Include="..\src\WinControls\ToolBar\ToolBar.cpp" />
     <ClCompile Include="..\src\WinControls\ToolTip\ToolTip.cpp" />
@@ -349,6 +352,8 @@
     <ClInclude Include="..\src\NppThemesCore\include\nppthemes\ThemeXmlCompiler.h" />
     <ClInclude Include="..\src\NppThemes\DarkModeThemeAdapter.h" />
     <ClInclude Include="..\src\NppThemes\NppDarkModePaletteHost.h" />
+    <ClInclude Include="..\src\NppThemes\StartupProfileStore.h" />
+    <ClInclude Include="..\src\NppThemes\ThemeRuntime.h" />
     <ClInclude Include="..\src\NppThemes\ThemeService.h" />
     <ClInclude Include="..\src\WinControls\ToolBar\ToolBar.h" />
     <ClInclude Include="..\src\WinControls\ToolTip\ToolTip.h" />

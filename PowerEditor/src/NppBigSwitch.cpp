@@ -32,6 +32,7 @@
 #include "functionListPanel.h"
 #include "fileBrowser.h"
 #include "NppDarkMode.h"
+#include "NppThemes/ThemeRuntime.h"
 #include "NppConstants.h"
 
 using namespace std;
@@ -273,6 +274,9 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 					::SendMessage(hSubDlg, WM_COMMAND, IDC_RADIO_DARKMODE_DARKMODE, 0);
 				}
 			}
+
+			// Host refresh can reset its runtime color tone. Apply NppThemes policy last.
+			NppThemesShell::themeRuntime().setHighContrastActive(NppDarkMode::isHighContrast());
 
 			// let the Scintilla to update according to the possible changed OS settings
 			// (mouse wheel vertical & horizontal scroll amount, DirectWrite rendering params, base elements, style etc.)

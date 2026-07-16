@@ -28,6 +28,8 @@ ARM64 cross-build remains unavailable locally because the installed VS 2022 v143
 
 The first fork-owned ThemeService foundation compiles inside both local Release architectures. Its standalone behavior suite covers validated initialization, atomic invalid-profile rejection, preview cancel/commit, subscription lifetime, generation changes, forced High Contrast native fallback, host-palette mapping, and exact native-palette restoration. The cross-host conformance suite compiles directly from the pinned shared subtree and compares canonical output with its golden fixture.
 
+Safe startup persistence is wired after Notepad++ settings and dark-mode initialization. Tests cover missing-profile no-write behavior, regular-file and 1 MiB limits, malformed input, durable apply markers, incomplete-apply recovery, successful runtime activation, live High Contrast restore/resume, and shutdown restoration. Real x64 process smokes pass for missing, valid, and recovery cases; Win32 valid-profile startup also passes.
+
 Local verification commands:
 
 ```powershell
