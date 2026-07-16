@@ -27,6 +27,7 @@ target_link_libraries(NppThemesConformance PRIVATE NppThemesShellCore)
 
 add_executable(NppThemesThemeServiceTests
     ThemeServiceTests.cpp
+    "${NPP_SOURCE_DIR}/NppThemes/DarkModeThemeAdapter.cpp"
     "${NPP_SOURCE_DIR}/NppThemes/ThemeService.cpp"
 )
 target_include_directories(NppThemesThemeServiceTests PRIVATE "${NPP_SOURCE_DIR}")

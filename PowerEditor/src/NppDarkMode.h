@@ -120,6 +120,7 @@ namespace NppDarkMode
 	double calculatePerceivedLightness(COLORREF c);
 
 	void setDarkTone(ColorTone colorToneChoice);
+	ColorTone getDarkTone();
 
 	COLORREF getAccentColor(bool useDark);
 	COLORREF getAccentColor();

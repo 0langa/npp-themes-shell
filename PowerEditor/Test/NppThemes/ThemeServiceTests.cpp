@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 
+#include "NppThemes/DarkModeThemeAdapter.h"
 #include "NppThemes/ThemeService.h"
 
 namespace {
@@ -24,6 +25,23 @@ public:
     int count{};
     std::uint64_t lastGeneration{};
     NppThemesShell::ThemeRenderMode lastMode{NppThemesShell::ThemeRenderMode::Native};
+};
+
+class RecordingDarkModeHost final : public NppThemesShell::DarkModePaletteHost {
+public:
+    [[nodiscard]] NppThemesShell::DarkModePaletteState capture() const noexcept override {
+        ++captureCount;
+        return current;
+    }
+
+    void apply(const NppThemesShell::DarkModePaletteState& palette) noexcept override {
+        ++applyCount;
+        current = palette;
+    }
+
+    mutable int captureCount{};
+    int applyCount{};
+    NppThemesShell::DarkModePaletteState current{7, 0x010203U, 0x040506U};
 };
 
 } // namespace
@@ -84,6 +102,28 @@ int main() {
     require(subscriber.count == countBeforeUnsubscribe, "unsubscribed surface receives no event");
     require(!service.commitPreview(), "commit without preview is a no-op");
     require(!service.cancelPreview(), "cancel without preview is a no-op");
+
+    RecordingDarkModeHost host;
+    const auto nativePalette = host.current;
+    NppThemesShell::DarkModeThemeAdapter adapter(service, host);
+    require(adapter.activate(), "dark-mode adapter activates");
+    require(!adapter.activate(), "dark-mode adapter rejects duplicate activation");
+    require(host.captureCount == 1, "adapter captures native palette once");
+    require(host.current.tone == 32, "adapter selects customized host tone");
+    require(host.current.background == service.snapshot()->palette.windowBackground,
+            "adapter maps window background");
+    require(host.current.controlBackground == service.snapshot()->palette.controlBackground,
+            "adapter maps control background");
+
+    service.setHighContrastActive(true);
+    require(host.current == nativePalette, "High Contrast restores exact native host palette");
+    service.setHighContrastActive(false);
+    require(host.captureCount == 2, "adapter recaptures after native fallback");
+    require(host.current.tone == 32, "adapter resumes customized tone after High Contrast");
+
+    adapter.deactivate();
+    require(host.current == nativePalette, "adapter deactivation restores native host palette");
+    require(!adapter.isActive(), "adapter reports inactive after deactivation");
 
     return 0;
 }

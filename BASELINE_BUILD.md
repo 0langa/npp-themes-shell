@@ -22,9 +22,11 @@ Win32 Release also builds with the shared core and passes isolated startup smoke
 
 ARM64 cross-build remains unavailable locally because the installed VS 2022 v143 workload has no ARM64 compiler or libraries (`Hostx64\arm64\cl.exe` and `lib\arm64` are absent). NppThemes Shell CI therefore performs compile-only Release qualification on GitHub's Windows runner for x64, Win32, and ARM64. Physical ARM64 startup, rendering, DPI, and accessibility checks remain deferred until hardware is available; compile success does not replace those runtime gates.
 
+[NppThemes Shell CI run 29503534204](https://github.com/0langa/npp-themes-shell/actions/runs/29503534204) passed contract/service tests plus Release x64, Win32, and ARM64 compilation on 2026-07-16. No binaries were uploaded.
+
 ## ThemeService foundation
 
-The first fork-owned ThemeService foundation compiles inside both local Release architectures. Its standalone behavior suite covers validated initialization, atomic invalid-profile rejection, preview cancel/commit, subscription lifetime, generation changes, and forced High Contrast native fallback. The cross-host conformance suite compiles directly from the pinned shared subtree and compares canonical output with its golden fixture.
+The first fork-owned ThemeService foundation compiles inside both local Release architectures. Its standalone behavior suite covers validated initialization, atomic invalid-profile rejection, preview cancel/commit, subscription lifetime, generation changes, forced High Contrast native fallback, host-palette mapping, and exact native-palette restoration. The cross-host conformance suite compiles directly from the pinned shared subtree and compares canonical output with its golden fixture.
 
 Local verification commands:
 
