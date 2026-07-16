@@ -173,6 +173,9 @@
     <ClCompile Include="..\src\WinControls\TaskList\TaskList.cpp" />
     <ClCompile Include="..\src\WinControls\TaskList\TaskListDlg.cpp" />
     <ClCompile Include="..\src\pugixml\pugixml.cpp" />
+    <ClCompile Include="..\src\NppThemesCore\src\ShellPalette.cpp" />
+    <ClCompile Include="..\src\NppThemesCore\src\ThemeProfile.cpp" />
+    <ClCompile Include="..\src\NppThemesCore\src\ThemeXmlCompiler.cpp" />
     <ClCompile Include="..\src\WinControls\ToolBar\ToolBar.cpp" />
     <ClCompile Include="..\src\WinControls\ToolTip\ToolTip.cpp" />
     <ClCompile Include="..\src\WinControls\TrayIcon\trayIconControler.cpp" />
@@ -338,6 +341,9 @@
     <ClInclude Include="..\src\WinControls\TaskList\TaskListDlg_rc.h" />
     <ClInclude Include="..\src\pugixml\pugiconfig.hpp" />
     <ClInclude Include="..\src\pugixml\pugixml.hpp" />
+    <ClInclude Include="..\src\NppThemesCore\include\nppthemes\ShellPalette.h" />
+    <ClInclude Include="..\src\NppThemesCore\include\nppthemes\ThemeProfile.h" />
+    <ClInclude Include="..\src\NppThemesCore\include\nppthemes\ThemeXmlCompiler.h" />
     <ClInclude Include="..\src\WinControls\ToolBar\ToolBar.h" />
     <ClInclude Include="..\src\WinControls\ToolTip\ToolTip.h" />
     <ClInclude Include="..\src\WinControls\TrayIcon\trayIconControler.h" />
@@ -366,6 +372,11 @@
   <ItemGroup>
     <Manifest Include="..\src\notepad++.exe.manifest" />
   </ItemGroup>
+  <ItemDefinitionGroup Label="NppThemesCore">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\src\NppThemesCore\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <Import Project="notepadPlus.uchardet.targets" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
