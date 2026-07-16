@@ -5,7 +5,11 @@
 #include <filesystem>
 #include <string>
 
+#if __has_include(<pugixml.hpp>)
 #include <pugixml.hpp>
+#else
+#include <pugixml/pugixml.hpp>
+#endif
 
 #ifdef _WIN32
 #include <windows.h>
