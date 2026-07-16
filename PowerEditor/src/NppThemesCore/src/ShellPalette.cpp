@@ -7,7 +7,11 @@
 #include <string_view>
 #include <utility>
 
+#if __has_include(<nlohmann/json.hpp>)
 #include <nlohmann/json.hpp>
+#else
+#include <json/json.hpp>
+#endif
 
 namespace nppthemes {
 namespace {

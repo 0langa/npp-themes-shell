@@ -10,7 +10,11 @@
 #include <stdexcept>
 #include <unordered_map>
 
+#if __has_include(<nlohmann/json.hpp>)
 #include <nlohmann/json.hpp>
+#else
+#include <json/json.hpp>
+#endif
 
 #include "nppthemes/ShellPalette.h"
 
