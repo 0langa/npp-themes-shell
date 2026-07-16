@@ -39,9 +39,13 @@ public:
         current = palette;
     }
 
+    [[nodiscard]] bool rendererDark() const noexcept override { return dark; }
+    void setRendererDark(const bool value) noexcept override { dark = value; }
+
     mutable int captureCount{};
     int applyCount{};
     NppThemesShell::DarkModePaletteState current{7, 0x010203U, 0x040506U};
+    bool dark{};
 };
 
 } // namespace

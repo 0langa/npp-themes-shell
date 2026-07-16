@@ -48,6 +48,23 @@ constexpr char markerText[] = "NppThemes Shell apply in progress\n";
     return flushSucceeded;
 }
 
+[[nodiscard]] bool writeDurableFile(const std::filesystem::path& path, const std::string& content) noexcept {
+    const auto handle = ::CreateFileW(path.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                                      FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH, nullptr);
+    if (handle == INVALID_HANDLE_VALUE || content.size() > MAXDWORD) {
+        if (handle != INVALID_HANDLE_VALUE) {
+            ::CloseHandle(handle);
+        }
+        return false;
+    }
+    DWORD written{};
+    const auto writeSucceeded = ::WriteFile(handle, content.data(), static_cast<DWORD>(content.size()), &written,
+                                             nullptr) != FALSE;
+    const auto flushSucceeded = writeSucceeded && written == content.size() && ::FlushFileBuffers(handle) != FALSE;
+    ::CloseHandle(handle);
+    return flushSucceeded;
+}
+
 } // namespace
 
 StartupProfileStore::StartupProfileStore(std::filesystem::path settingsRoot)
@@ -112,6 +129,55 @@ bool StartupProfileStore::beginApply(std::string& error) const {
         std::error_code ignored;
         std::filesystem::remove(temporary, ignored);
         error = "unable to commit incomplete-apply marker";
+        return false;
+    }
+    error.clear();
+    return true;
+}
+
+bool StartupProfileStore::persist(const nppthemes::ThemeProfile& profile, std::string& error) const {
+    std::error_code fileError;
+    if (!std::filesystem::exists(_markerPath, fileError) || fileError) {
+        error = "active profile write requires incomplete-apply marker";
+        return false;
+    }
+    const auto profileErrors = nppthemes::validateProfile(profile);
+    if (!profileErrors.empty()) {
+        error = profileErrors.front();
+        return false;
+    }
+    const auto serialized = nppthemes::serializeProfile(nppthemes::migrateProfileToV2(profile));
+    auto temporary = _profilePath;
+    temporary += L".tmp";
+    if (!writeDurableFile(temporary, serialized)) {
+        error = "unable to durably write active profile";
+        return false;
+    }
+    if (::MoveFileExW(temporary.c_str(), _profilePath.c_str(),
+                      MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) == FALSE) {
+        std::error_code ignored;
+        std::filesystem::remove(temporary, ignored);
+        error = "unable to atomically replace active profile";
+        return false;
+    }
+    error.clear();
+    return true;
+}
+
+bool StartupProfileStore::disable(std::string& error) const {
+    std::error_code fileError;
+    if (!std::filesystem::exists(_markerPath, fileError) || fileError) {
+        error = "active profile removal requires incomplete-apply marker";
+        return false;
+    }
+    fileError.clear();
+    if (std::filesystem::exists(_profilePath, fileError) &&
+        (!std::filesystem::remove(_profilePath, fileError) || fileError)) {
+        error = "unable to remove active profile";
+        return false;
+    }
+    if (fileError) {
+        error = "unable to inspect active profile for removal";
         return false;
     }
     error.clear();

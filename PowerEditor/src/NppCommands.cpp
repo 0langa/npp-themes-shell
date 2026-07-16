@@ -157,6 +157,13 @@ void Notepad_plus::macroPlayback(Macro macro, std::vector<Document>* pDocs4EndUA
 
 void Notepad_plus::command(int id)
 {
+	if (id == IDM_NPPTHEMES_DISABLE ||
+		(id >= IDM_NPPTHEMES_PROFILE_FIRST && id < IDM_NPPTHEMES_PROFILE_LIMIT))
+	{
+		commandNppThemes(id);
+		return;
+	}
+
 	switch (id)
 	{
 		case IDM_FILE_NEW:

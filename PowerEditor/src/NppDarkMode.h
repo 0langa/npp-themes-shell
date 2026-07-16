@@ -179,6 +179,7 @@ namespace NppDarkMode
 	// from DarkMode.h
 	void initExperimentalDarkMode();
 	void setDarkMode(bool useDark, bool fixDarkScrollbar);
+	void setRuntimeEnabled(bool useDark);
 	void allowDarkModeForApp(bool allow);
 	bool allowDarkModeForWindow(HWND hWnd, bool allow);
 	void setTitleBarThemeColor(HWND hWnd);

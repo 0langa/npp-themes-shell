@@ -29,6 +29,8 @@ public:
     virtual ~DarkModePaletteHost() = default;
     [[nodiscard]] virtual DarkModePaletteState capture() const noexcept = 0;
     virtual void apply(const DarkModePaletteState& palette) noexcept = 0;
+    [[nodiscard]] virtual bool rendererDark() const noexcept = 0;
+    virtual void setRendererDark(bool dark) noexcept = 0;
 };
 
 [[nodiscard]] DarkModePaletteState mapDarkModePalette(const nppthemes::ShellPalette& palette) noexcept;

@@ -59,4 +59,12 @@ void NppDarkModePaletteHost::apply(const DarkModePaletteState& palette) noexcept
     NppDarkMode::setDarkTone(tone);
 }
 
+bool NppDarkModePaletteHost::rendererDark() const noexcept {
+    return NppDarkMode::isEnabled();
+}
+
+void NppDarkModePaletteHost::setRendererDark(const bool dark) noexcept {
+    NppDarkMode::setRuntimeEnabled(dark);
+}
+
 } // namespace NppThemesShell

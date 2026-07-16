@@ -182,6 +182,7 @@
     <ClCompile Include="..\src\NppThemes\ThemeRuntime.cpp" />
     <ClCompile Include="..\src\NppThemes\ThemeRuntimeHost.cpp" />
     <ClCompile Include="..\src\NppThemes\ThemeService.cpp" />
+    <ClCompile Include="..\src\NppThemesMenu.cpp" />
     <ClCompile Include="..\src\WinControls\ToolBar\ToolBar.cpp" />
     <ClCompile Include="..\src\WinControls\ToolTip\ToolTip.cpp" />
     <ClCompile Include="..\src\WinControls\TrayIcon\trayIconControler.cpp" />

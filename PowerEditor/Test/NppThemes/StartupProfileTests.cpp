@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -51,8 +52,16 @@ public:
         ++applyCount;
     }
 
+    [[nodiscard]] bool rendererDark() const noexcept override { return dark; }
+    void setRendererDark(const bool value) noexcept override {
+        dark = value;
+        ++rendererApplyCount;
+    }
+
     NppThemesShell::DarkModePaletteState current{6, 0x102030U, 0x405060U};
     int applyCount{};
+    int rendererApplyCount{};
+    bool dark{};
 };
 
 } // namespace
@@ -87,6 +96,9 @@ int main() {
     require(store.beginApply(error), "second apply marker begins");
     require(store.completeApply(error), "successful apply clears marker");
     require(!std::filesystem::exists(store.markerPath()), "completed apply leaves no marker");
+    require(!store.persist(profile, error), "profile write without marker is rejected");
+    require(!store.disable(error), "profile removal without marker is rejected");
+    require(std::filesystem::exists(store.profilePath()), "rejected removal preserves active profile");
 
     RecordingHost host;
     const auto native = host.current;
@@ -95,13 +107,46 @@ int main() {
     require(activated.status == NppThemesShell::StartupProfileStatus::Ready, "valid startup profile activates");
     require(runtime.isActive(), "runtime reports active adapter");
     require(host.current.tone == 32, "runtime applies customized host tone");
+    require(host.dark == profile.dark, "startup coordinates host renderer with profile mode");
     require(!std::filesystem::exists(store.markerPath()), "activation commits marker cleanup");
     runtime.setHighContrastActive(true);
     require(host.current == native, "High Contrast restores exact native state");
+    require(!host.dark, "High Contrast disables custom dark renderer");
     runtime.setHighContrastActive(false);
     require(host.current.tone == 32, "custom palette resumes after High Contrast");
+    require(host.dark == profile.dark, "profile renderer mode resumes after High Contrast");
+
+    auto invalidProfile = profile;
+    invalidProfile.fontSizePt = 2;
+    require(!runtime.selectProfile(invalidProfile, error), "invalid runtime selection is rejected");
+    require(runtime.activeProfile() && runtime.activeProfile()->id == profile.id,
+            "invalid selection preserves active profile");
+    const auto persistedAfterRejection = store.load();
+    require(persistedAfterRejection.profile && persistedAfterRejection.profile->id == profile.id,
+            "invalid selection preserves persisted profile");
+
+    const auto profiles = nppthemes::builtInProfiles();
+    const auto lightProfile = *std::ranges::find_if(profiles, [](const auto& candidate) { return !candidate.dark; });
+    require(runtime.selectProfile(lightProfile, error), "runtime switches to light profile");
+    require(!host.dark, "light profile disables host dark renderer");
+    require(runtime.activeProfile() && runtime.activeProfile()->id == lightProfile.id,
+            "selected profile becomes active");
+    const auto persistedLight = store.load();
+    require(persistedLight.profile && persistedLight.profile->id == lightProfile.id,
+            "selected profile persists atomically");
+
+    const auto darkProfile = *std::ranges::find_if(profiles, [](const auto& candidate) { return candidate.dark; });
+    require(runtime.selectProfile(darkProfile, error), "runtime switches to dark profile");
+    require(host.dark, "dark profile enables host dark renderer");
+    require(runtime.disable(error), "runtime disable succeeds");
+    require(!runtime.isActive(), "disable deactivates adapter");
+    require(!host.dark, "disable restores original renderer mode");
+    require(!std::filesystem::exists(store.profilePath()), "disable removes persisted profile");
+
+    require(runtime.selectProfile(darkProfile, error), "selection works again after disable");
     runtime.shutdown();
     require(host.current == native, "runtime shutdown restores native state");
+    require(!host.dark, "runtime shutdown restores original renderer mode");
 
     TemporaryDirectory oversizedRoot;
     NppThemesShell::StartupProfileStore oversizedStore(oversizedRoot.path);

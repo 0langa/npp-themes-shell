@@ -347,6 +347,7 @@ private:
 
 	WindowsMenu _windowsMenu;
 	HMENU _mainMenuHandle = NULL;
+	HMENU _nppThemesMenuHandle = NULL;
 
 	bool _sysMenuEntering = false;
 
@@ -426,6 +427,9 @@ private:
 
 	BOOL notify(SCNotification *notification);
 	void command(int id);
+	void initNppThemesMenu(HWND hwnd);
+	void updateNppThemesMenu();
+	void commandNppThemes(int id);
 
 //Document management
 	UCHAR _mainWindowStatus = 0; //For 2 views and user dialog if docked

@@ -931,6 +931,12 @@ namespace NppDarkMode
 		::SetDarkMode(useDark, fixDarkScrollbar);
 	}
 
+	void setRuntimeEnabled(bool useDark)
+	{
+		_options.enable = useDark && !IsHighContrast();
+		setDarkMode(_options.enable, true);
+	}
+
 	void allowDarkModeForApp(bool allow)
 	{
 		::AllowDarkModeForApp(allow);

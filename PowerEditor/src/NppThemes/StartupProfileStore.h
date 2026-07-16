@@ -27,6 +27,8 @@ public:
 
     [[nodiscard]] StartupProfileLoad load() const;
     [[nodiscard]] bool beginApply(std::string& error) const;
+    [[nodiscard]] bool persist(const nppthemes::ThemeProfile& profile, std::string& error) const;
+    [[nodiscard]] bool disable(std::string& error) const;
     [[nodiscard]] bool completeApply(std::string& error) const;
 
     [[nodiscard]] const std::filesystem::path& directory() const noexcept { return _directory; }

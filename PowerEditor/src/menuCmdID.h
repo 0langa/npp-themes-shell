@@ -634,6 +634,12 @@
 #define    IDM_EXECUTE  (IDM + 9000)
 #define    IDM_EXECUTE_VALIDATE_SHORTCUTSXML          (IDM_EXECUTE + 1)
 
+#define    IDM_NPPTHEMES                              (IDM + 9500)
+    #define    IDM_NPPTHEMES_DISABLE                  (IDM_NPPTHEMES + 1)
+    #define    IDM_NPPTHEMES_STATUS                   (IDM_NPPTHEMES + 2)
+    #define    IDM_NPPTHEMES_PROFILE_FIRST            (IDM_NPPTHEMES + 10)
+    #define    IDM_NPPTHEMES_PROFILE_LIMIT            (IDM_NPPTHEMES + 42)
+
 #define IDM_SYSTRAYPOPUP     (IDM + 3100)
     #define IDM_SYSTRAYPOPUP_ACTIVATE         (IDM_SYSTRAYPOPUP + 1)
     #define IDM_SYSTRAYPOPUP_NEWDOC           (IDM_SYSTRAYPOPUP + 2)

@@ -639,6 +639,7 @@ LRESULT Notepad_plus::init(HWND hwnd)
 	}
 
 	_nativeLangSpeaker.changeMenuLang(_mainMenuHandle);
+	initNppThemesMenu(hwnd);
 	::DrawMenuBar(hwnd);
 
 
