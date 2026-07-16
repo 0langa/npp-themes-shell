@@ -10,8 +10,8 @@ Status: unmodified upstream baseline; not distributable as an NppThemes product.
 - Product branch: `shell/main`
 - Upstream mirror branch: `master`
 - Shared core: <https://github.com/0langa/npp-themes>
-- Shared source commit: `43fe41b27d0b35b1955bbaa2d2eea321888e1edf`
-- Imported subtree split: `0f272a5e82f272cf5c7bc57fc070befe5efcafea`
+- Shared source commit: `c4d42c3c2fb81160632c29d78f3ae4ec7fd21e01`
+- Imported subtree split: `9ecb55a09ae9cae94a4435288d973db58004b764`
 
 ## Ownership
 
