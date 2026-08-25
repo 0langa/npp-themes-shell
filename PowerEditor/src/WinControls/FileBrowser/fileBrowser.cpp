@@ -971,10 +971,18 @@ void FileBrowser::popupMenuCmd(int cmdID)
 		case IDM_FILEBROWSER_SHELLEXECUTE:
 		{
 			if (!selectedNode) return;
-			wstring path = getNodePath(selectedNode);
+			wstring literalPath = L"\\\\?\\" + getNodePath(selectedNode);
 
-			if (doesPathExist(path.c_str()))
-				::ShellExecute(NULL, L"open", path.c_str(), NULL, NULL, SW_SHOWNORMAL);
+			if (doesPathExist(literalPath.c_str()))
+			{
+				SHELLEXECUTEINFO sei{};
+				sei.cbSize = sizeof(sei);
+				sei.fMask = SEE_MASK_FLAG_NO_UI;
+				sei.lpVerb = L"open";
+				sei.lpFile = literalPath.c_str();
+				sei.nShow = SW_SHOWNORMAL;
+				::ShellExecuteEx(&sei);
+			}
 		}
 		break;
 	}
@@ -998,7 +1006,7 @@ void FileBrowser::getDirectoryStructure(const wchar_t *dir, const std::vector<ws
 	{
 		do
 		{
-			if (foundData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) // Ignore junctions and symbolic links to prevent infinite recursive loop
+			if ((foundData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) && !NppParameters::getInstance().getNppGUI()._isFawSymlinkAllowed) // Ignore junctions and symbolic links to prevent infinite recursive loop, if not allowed
 				return;
 
 			if (foundData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)

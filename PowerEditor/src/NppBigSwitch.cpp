@@ -126,6 +126,66 @@ bool SetOSAppRestart()
 	return bRet;
 }
 
+static bool isSenderTrusted(WPARAM wParam)
+{
+	HWND hSenderWnd = reinterpret_cast<HWND>(wParam);
+	if (hSenderWnd == NULL || !IsWindow(hSenderWnd))
+		return false; // no real window handle presented -> reject
+
+	DWORD dwProcessId = 0;
+	if (GetWindowThreadProcessId(hSenderWnd, &dwProcessId) == 0 || dwProcessId == 0)
+		return false;
+
+	if (dwProcessId == GetCurrentProcessId())
+		return false; // same-process - the same Notepad++ instance never send itself WM_COPYDATA - could be fake -> reject
+
+	HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, dwProcessId);
+	if (!hProcess)
+		return false;
+
+	bool isTrusted = false;
+
+	// Integrity level: require Medium or higher (blocks Low-IL sandboxes)
+	HANDLE hToken = NULL;
+	if (OpenProcessToken(hProcess, TOKEN_QUERY, &hToken))
+	{
+		BYTE tokenBuffer[sizeof(TOKEN_MANDATORY_LABEL) + SECURITY_MAX_SID_SIZE] = { 0 };
+		DWORD dwLength = 0;
+		if (GetTokenInformation(hToken, TokenIntegrityLevel, tokenBuffer, sizeof(tokenBuffer), &dwLength))
+		{
+			PTOKEN_MANDATORY_LABEL pTIL = reinterpret_cast<PTOKEN_MANDATORY_LABEL>(tokenBuffer);
+			DWORD dwIntegrityLevel = *GetSidSubAuthority(
+				pTIL->Label.Sid,
+				(DWORD)(UCHAR)(*GetSidSubAuthorityCount(pTIL->Label.Sid) - 1));
+
+			if (dwIntegrityLevel >= SECURITY_MANDATORY_MEDIUM_RID)
+				isTrusted = true;
+		}
+		CloseHandle(hToken);
+	}
+
+	// Executable identity: require it to be this same binary (another Notepad++ instance with the same path)
+	if (isTrusted)
+	{
+		wchar_t senderImagePath[MAX_PATH] = { 0 };
+		DWORD dwSize = MAX_PATH;
+		wchar_t selfImagePath[MAX_PATH] = { 0 };
+
+		if (QueryFullProcessImageNameW(hProcess, 0, senderImagePath, &dwSize) &&
+			GetModuleFileNameW(NULL, selfImagePath, MAX_PATH) > 0)
+		{
+			isTrusted = (_wcsicmp(senderImagePath, selfImagePath) == 0);
+		}
+		else
+		{
+			isTrusted = false;
+		}
+	}
+
+	CloseHandle(hProcess);
+	return isTrusted;
+}
+
 LRESULT CALLBACK Notepad_plus_Window::Notepad_plus_Proc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	if (hwnd == NULL)
@@ -163,8 +223,7 @@ LRESULT Notepad_plus_Window::runProc(HWND hwnd, UINT message, WPARAM wParam, LPA
 	{
 		case WM_CREATE:
 		{
-			try
-			{
+			try {
 				NppDarkMode::setDarkTitleBar(hwnd);
 				NppDarkMode::autoSubclassWindowMenuBar(hwnd);
 				NppDarkMode::autoSubclassCtlColor(hwnd);
@@ -282,6 +341,11 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			// (mouse wheel vertical & horizontal scroll amount, DirectWrite rendering params, base elements, style etc.)
 			::SendMessage(_mainEditView.getHSelf(), WM_SETTINGCHANGE, wParam, lParam);
 			::SendMessage(_subEditView.getHSelf(), WM_SETTINGCHANGE, wParam, lParam);
+			HWND hFindResults = _findReplaceDlg.getHFindResults();
+			if (hFindResults != NULL)
+			{
+				::SendMessage(hFindResults, WM_SETTINGCHANGE, wParam, lParam);
+			}
 
 			return ::DefWindowProc(hwnd, message, wParam, lParam);
 		}
@@ -730,33 +794,34 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 		case WM_COPYDATA:
 		{
-			COPYDATASTRUCT *pCopyData = reinterpret_cast<COPYDATASTRUCT *>(lParam);
+			if (lParam == 0)
+				return TRUE; // invalid
+
+			if (!isSenderTrusted(wParam))
+				return TRUE; // reject: not another trusted instance of this same binary
+
+			COPYDATASTRUCT* pCopyData = reinterpret_cast<COPYDATASTRUCT*>(lParam);
+			if (pCopyData->lpData == nullptr)
+				return TRUE; // invalid
 
 			switch (pCopyData->dwData)
 			{
 				case COPYDATA_FULL_CMDLINE:
 				{
-					try {
-						wchar_t* str2set = static_cast<wchar_t*>(pCopyData->lpData);
-						nppParam.setCmdLineString(str2set);
-					}
-					catch (...)
-					{
-#if !defined(NDEBUG)
-						printStr(L"COPYDATA_FULL_CMDLINE: invalid string pointer.");
-#endif
-					}
+					wchar_t* str2set = static_cast<wchar_t*>(pCopyData->lpData);
+					nppParam.setCmdLineString(str2set);
 					break;
 				}
 
 				case COPYDATA_PARAMS:
 				{
-					const CmdLineParamsDTO *cmdLineParam = static_cast<const CmdLineParamsDTO *>(pCopyData->lpData); // CmdLineParams object from another instance
-					const DWORD cmdLineParamsSize = pCopyData->cbData;  // CmdLineParams size from another instance
+					const CmdLineParamsDTO* cmdLineParam = static_cast<const CmdLineParamsDTO*>(pCopyData->lpData); // CmdLineParams object from another instance, but the same binary
+					const DWORD cmdLineParamsSize = pCopyData->cbData; // CmdLineParams size from another instance
 					if (sizeof(CmdLineParamsDTO) == cmdLineParamsSize) // make sure the structure is the same
 					{
-						nppParam.setCmdlineParam(*cmdLineParam);
-						wstring pluginMessage { nppParam.getCmdLineParams()._pluginMessage };
+						nppParam.setCmdlineParam(*cmdLineParam); // need to be guarded for possible invalid ptr passed
+
+						wstring pluginMessage{ nppParam.getCmdLineParams()._pluginMessage };
 						if (!pluginMessage.empty())
 						{
 							SCNotification scnN{};
@@ -765,32 +830,18 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 							scnN.nmhdr.idFrom = reinterpret_cast<uptr_t>(pluginMessage.c_str());
 							_pluginsManager.notify(&scnN);
 						}
-					}
-					else
-					{
-#if !defined(NDEBUG)  
-						printStr(L"COPYDATA_PARAMS: sizeof(CmdLineParams) != cmdLineParamsSize\rCmdLineParams is formed by an instance of another version,\rwhereas your CmdLineParams has been modified in this instance.");
-#endif
-					}
 
-					NppGUI nppGui = (NppGUI)nppParam.getNppGUI();
-					nppGui._isCmdlineNosessionActivated = cmdLineParam->_isNoSession;
+						NppGUI& nppGui = nppParam.getNppGUI();
+						nppGui._isCmdlineNosessionActivated = cmdLineParam->_isNoSession; // need to be guarded for possible invalid ptr passed
+					}
 					break;
 				}
 
 				case COPYDATA_FILENAMESW:
 				{
-					try {
-						wchar_t* fileNamesW = static_cast<wchar_t*>(pCopyData->lpData);
-						const CmdLineParamsDTO& cmdLineParams = nppParam.getCmdLineParams();
-						loadCommandlineParams(fileNamesW, &cmdLineParams);
-					}
-					catch (...)
-					{
-#if !defined(NDEBUG)
-						printStr(L"COPYDATA_FILENAMESW: invalid string pointer.");
-#endif
-					}
+					wchar_t* fileNamesW = static_cast<wchar_t*>(pCopyData->lpData);
+					const CmdLineParamsDTO& cmdLineParams = nppParam.getCmdLineParams();
+					loadCommandlineParams(fileNamesW, &cmdLineParams);
 					break;
 				}
 			}
@@ -1509,6 +1560,55 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		{
 			if (!_recordingMacro) // if we're not currently recording, then playback the recorded keystrokes
 			{
+				//-- shortcuts.xml security validation --//
+
+				NppParameters& nppParams = NppParameters::getInstance();
+				NppGUI& nppGUI = nppParams.getNppGUI();
+
+				// If HMAC is absent from config.xml, force user enable security validation, and generate and save HMAC in config.xml
+				if (nppGUI._shortcutsXmlHmacInConfig.empty())
+				{
+					// Open shortcuts.xml in read-only for user to review
+					BufferID shortcutsBufId = doOpen(nppParams.getShortcutsPath(), false, true);
+					if (shortcutsBufId != BUFFER_INVALID)
+					{
+						switchToFile(shortcutsBufId);
+
+						nppParams.getNativeLangSpeaker()->messageBox("ShortcutsXmlHMACMissing",
+							NULL,
+							L"The security information for shortcuts.xml is missing in config.xml.\r\rFor security reasons, the integrity of shortcuts.xml will be checked. To run your customized command, please review the opened shortcuts.xml. If the file content is OK, use \"Validate shortcuts.xml\" from the \"Run\" menu to confirm it.",
+							L"Security Warning",
+							MB_OK);
+					}
+					return FALSE;
+				}
+
+				// If HMAC is present, calculate shortcuts.xml HMAC and compare with the one from config.xml
+				else
+				{
+					if (nppGUI._shortcutsOnDiskHmac != nppGUI._shortcutsXmlHmacInConfig)
+					{
+						// if they don't match, it means shortcuts.xml could be tampered with, so show warning message and calculate shortcuts.xml HMAC
+
+						// Open shortcuts.xml in read-only for user to review
+						BufferID shortcutsBufId = doOpen(nppParams.getShortcutsPath(), false, true);
+						if (shortcutsBufId != BUFFER_INVALID)
+						{
+							switchToFile(shortcutsBufId);
+
+							nppParams.getNativeLangSpeaker()->messageBox("ShortcutsXmlTampered",
+								NULL,
+								L"The shortcuts.xml file appears to have been modified manually.\r\rFor security reasons, please review the opened shortcuts.xml. If the file content is OK, use \"Validate shortcuts.xml\" from the \"Run\" menu to confirm it.",
+								L"Security Warning",
+								MB_OK);
+						}
+						return FALSE;
+					}
+					// else if they match, it means shortcuts.xml is safe
+				}
+
+				//-- End shortcuts.xml security validation --//
+
 				int times = _runMacroDlg.isMulti() ? _runMacroDlg.getTimes() : -1;
 
 				int counter = 0;
@@ -1695,6 +1795,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 		case NPPM_SAVESESSION:
 		{
+			if (!lParam) return FALSE;
 			sessionInfo *pSi = reinterpret_cast<sessionInfo *>(lParam);
 			return (LRESULT)fileSaveSession(pSi->nbFile, pSi->files, pSi->sessionFilePathName);
 		}
@@ -3156,16 +3257,19 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 		case NPPM_ALLOCATECMDID:
 		{
+			if (!lParam) return FALSE;
 			return _pluginsManager.allocateCmdID(static_cast<int32_t>(wParam), reinterpret_cast<int *>(lParam));
 		}
 
 		case NPPM_ALLOCATEMARKER:
 		{
+			if (!lParam) return FALSE;
 			return _pluginsManager.allocateMarker(static_cast<int32_t>(wParam), reinterpret_cast<int *>(lParam));
 		}
 
 		case NPPM_ALLOCATEINDICATOR:
 		{
+			if (!lParam) return FALSE;
 			return _pluginsManager.allocateIndicator(static_cast<int32_t>(wParam), reinterpret_cast<int *>(lParam));
 		}
 

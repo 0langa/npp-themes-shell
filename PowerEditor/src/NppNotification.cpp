@@ -224,10 +224,9 @@ BOOL Notepad_plus::notify(SCNotification *notification)
 		{
 			if (!notifyView) return FALSE;
 
+			NppGUI& nppGUI = NppParameters::getInstance().getNppGUI();
 			if (notification->modifiers == SCMOD_CTRL)
 			{
-				const NppGUI& nppGUI = NppParameters::getInstance().getNppGUI();
-
 				std::string bufstring;
 
 				size_t position_of_click;
@@ -372,7 +371,8 @@ BOOL Notepad_plus::notify(SCNotification *notification)
 				}
 			}
 			else
-			{ // Double click with no modifiers
+			{
+				// Double click with no modifiers
 				// Check whether cursor is within URL
 				auto indicMsk = notifyView->execute(SCI_INDICATORALLONFOR, notification->position);
 				if (!(indicMsk & (1 << URL_INDIC)))
@@ -393,6 +393,32 @@ BOOL Notepad_plus::notify(SCNotification *notification)
 
 				// Open URL
 				wstring url = notifyView->getGenericTextAsString(static_cast<size_t>(startPos), static_cast<size_t>(endPos));
+
+				if (isUncFileUrl(url))
+				{
+					if (nppGUI._networkPathWarningMethod == NppGUI::networkPathAlwaysAsk)
+					{
+						NetworkPathWarningBox networkPathWarningBox;
+						networkPathWarningBox.init(_pPublicInterface->getHinst(), _pPublicInterface->getHSelf(), url, "title2");
+						networkPathWarningBox.doDialog(_nativeLangSpeaker.isRTL());
+						int buttonID = networkPathWarningBox.getClickedButtonId();
+
+						networkPathWarningBox.destroy();
+
+						if (buttonID == IDCANCEL || buttonID == IDNO) // Skip once or Always skip
+						{
+							return FALSE;
+						}
+					}
+					else if (nppGUI._networkPathWarningMethod == NppGUI::networkPathAlwaysSkip)
+					{
+						return FALSE;
+					}
+					else if (nppGUI._networkPathWarningMethod == NppGUI::networkPathAlwaysLoad)
+					{
+						// do nothing, continue to load the file
+					}
+				}
 				::ShellExecute(_pPublicInterface->getHSelf(), L"open", url.c_str(), NULL, NULL, SW_SHOW);
 			}
 			break;
@@ -760,7 +786,7 @@ BOOL Notepad_plus::notify(SCNotification *notification)
 				{
 					docGotoAnotherEditView(isInCtrlStat?TransferClone:TransferMove);
 				}
-				else
+				else // Drop outside of current Notepad++
 				{
 					RECT nppZone{};
 					::GetWindowRect(_pPublicInterface->getHSelf(), &nppZone);
@@ -799,7 +825,7 @@ BOOL Notepad_plus::notify(SCNotification *notification)
 						else
 						{
 							::SendMessage(hWinParent, NPPM_INTERNAL_SWITCHVIEWFROMHWND, 0, reinterpret_cast<LPARAM>(hWin));
-							::SendMessage(hWinParent, WM_COPYDATA, reinterpret_cast<WPARAM>(_pPublicInterface->getHinst()), reinterpret_cast<LPARAM>(&fileNamesData));
+							::SendMessage(hWinParent, WM_COPYDATA, reinterpret_cast<WPARAM>(_pPublicInterface->getHSelf()), reinterpret_cast<LPARAM>(&fileNamesData));
 							if (!isInCtrlStat)
 							{
 								fileClose(bufferToClose, iView);
@@ -814,7 +840,7 @@ BOOL Notepad_plus::notify(SCNotification *notification)
 					}
 				}
 			}
-			//break;
+
 			sender->resetDraggingPoint();
 			return TRUE;
 		}
@@ -1203,8 +1229,7 @@ BOOL Notepad_plus::notify(SCNotification *notification)
 
 		case TTN_GETDISPINFO:
 		{
-			try
-			{
+			try {
 				LPTOOLTIPTEXT lpttt = (LPTOOLTIPTEXT)notification;
 				lpttt->hinst = NULL;
 

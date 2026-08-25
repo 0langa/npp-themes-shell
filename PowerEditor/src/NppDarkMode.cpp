@@ -113,6 +113,8 @@ namespace NppDarkMode
 		HBRUSH hotEdgeBrush = nullptr;
 		HBRUSH disabledEdgeBrush = nullptr;
 
+		HBRUSH darkerTextBrush = nullptr;
+
 		Brushes(const Colors& colors)
 			: background(::CreateSolidBrush(colors.background))
 			, ctrlBackground(::CreateSolidBrush(colors.softerBackground))
@@ -123,6 +125,8 @@ namespace NppDarkMode
 			, edgeBrush(::CreateSolidBrush(colors.edge))
 			, hotEdgeBrush(::CreateSolidBrush(colors.hotEdge))
 			, disabledEdgeBrush(::CreateSolidBrush(colors.disabledEdge))
+
+			, darkerTextBrush(::CreateSolidBrush(colors.darkerText))
 		{}
 
 		~Brushes()
@@ -136,6 +140,8 @@ namespace NppDarkMode
 			::DeleteObject(edgeBrush);			edgeBrush = nullptr;
 			::DeleteObject(hotEdgeBrush);		hotEdgeBrush = nullptr;
 			::DeleteObject(disabledEdgeBrush);	disabledEdgeBrush = nullptr;
+
+			::DeleteObject(darkerTextBrush);    darkerTextBrush = nullptr;
 		}
 
 		void change(const Colors& colors)
@@ -150,6 +156,8 @@ namespace NppDarkMode
 			::DeleteObject(hotEdgeBrush);
 			::DeleteObject(disabledEdgeBrush);
 
+			::DeleteObject(darkerTextBrush);
+
 			background = ::CreateSolidBrush(colors.background);
 			ctrlBackground = ::CreateSolidBrush(colors.softerBackground);
 			hotBackground = ::CreateSolidBrush(colors.hotBackground);
@@ -159,6 +167,8 @@ namespace NppDarkMode
 			edgeBrush = ::CreateSolidBrush(colors.edge);
 			hotEdgeBrush = ::CreateSolidBrush(colors.hotEdge);
 			disabledEdgeBrush = ::CreateSolidBrush(colors.disabledEdge);
+
+			darkerTextBrush = ::CreateSolidBrush(colors.darkerText);
 		}
 	};
 
@@ -759,6 +769,8 @@ namespace NppDarkMode
 	HBRUSH getEdgeBrush()                 { return getTheme()._brushes.edgeBrush; }
 	HBRUSH getHotEdgeBrush()              { return getTheme()._brushes.hotEdgeBrush; }
 	HBRUSH getDisabledEdgeBrush()         { return getTheme()._brushes.disabledEdgeBrush; }
+
+	HBRUSH getDarkerTextBrush()           { return getTheme()._brushes.darkerTextBrush; }
 
 	HPEN getDarkerTextPen()               { return getTheme()._pens.darkerTextPen; }
 	HPEN getEdgePen()                     { return getTheme()._pens.edgePen; }
@@ -4830,8 +4842,16 @@ namespace NppDarkMode
 		}
 		return S_OK;
 	}
-	static TASKDIALOGCONFIG msgBoxParamToTaskDlgConfig(HWND hWnd, LPCWSTR lpText, LPCWSTR lpCaption, UINT uType)
+
+	static TASKDIALOGCONFIG msgBoxParamToTaskDlgConfig(
+		HWND hWnd,
+		LPCWSTR lpText,
+		LPCWSTR lpCaption,
+		UINT uType
+	) noexcept
 	{
+		// base config
+
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 26476) // Expression/symbol 'name' uses a naked union 'union' with multiple type pointers: Use variant instead (type.7)
@@ -4844,23 +4864,38 @@ namespace NppDarkMode
 		tdc.hwndParent = hWnd;
 		tdc.hInstance = nullptr;
 		tdc.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION | TDF_SIZE_TO_CONTENT;
-		tdc.pszWindowTitle = lpCaption;
+		// Unlike message box localized "Error" string, task dialog uses filename if title is nullptr.
+		// Maintainer will need to provide localization themself.
+		tdc.pszWindowTitle = lpCaption != nullptr ? lpCaption : L"Error";
 		tdc.pszContent = lpText;
 		tdc.pfCallback = DarkTaskDlgMsgBoxCallback;
 		tdc.lpCallbackData = static_cast<LONG_PTR>(uType);
 
-		static const UINT btnDefMask = uType | MB_DEFMASK;
-		auto getDefBtn = [](std::array<int, 3> btnIDs)
+		InitMB_GetString();
+
+		// buttons
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 26446) // Prefer to use gsl::at() instead of unchecked subscript operator (bounds.4).
+#pragma warning(disable: 26482) // Only index into arrays using constant expressions.
+#endif
+
+	// NOLINTBEGIN(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+
+		const UINT btnDefMask = uType & MB_DEFMASK;
+		static constexpr UINT maxBtns = 3;
+		auto getDefBtn = [&btnDefMask](std::array<int, maxBtns> btnIDs) noexcept
 		{
 			if (btnDefMask == MB_DEFBUTTON2)
 			{
-				return btnIDs.at(1);
+				return btnIDs[1];
 			}
 			if (btnDefMask == MB_DEFBUTTON3)
 			{
-				return btnIDs.at(2);
+				return btnIDs[2];
 			}
-			return btnIDs.at(0);
+			return btnIDs[0];
 		};
 
 		switch (uType & MB_TYPEMASK)
@@ -4880,15 +4915,15 @@ namespace NppDarkMode
 
 			case MB_ABORTRETRYIGNORE:
 			{
-				static constexpr std::array<TASKDIALOG_BUTTON, 3> buttons{ {
-					{ IDABORT, L"&Abort" },
-					{ IDRETRY, L"&Retry" },
-					{ IDIGNORE, L"&Ignore" }
+				static const std::array<TASKDIALOG_BUTTON, maxBtns> buttons{ {
+					{ IDABORT, MyMB_GetString(IDABORT) },
+					{ IDRETRY, MyMB_GetString(IDRETRY) },
+					{ IDIGNORE, MyMB_GetString(IDIGNORE) }
 				} };
 
 				tdc.cButtons = static_cast<UINT>(buttons.size());
 				tdc.pButtons = buttons.data();
-				tdc.nDefaultButton = getDefBtn({ { buttons.at(0).nButtonID, buttons.at(1).nButtonID, buttons.at(2).nButtonID } });
+				tdc.nDefaultButton = getDefBtn({ { buttons[0].nButtonID, buttons[1].nButtonID, buttons[2].nButtonID } });
 
 				break;
 			}
@@ -4916,15 +4951,15 @@ namespace NppDarkMode
 
 			case MB_CANCELTRYCONTINUE:
 			{
-				static constexpr std::array<TASKDIALOG_BUTTON, 3> buttons{ {
-					{ IDABORT, L"&Abort" },
-					{ IDTRYAGAIN, L"&Try Again" },
-					{ IDCONTINUE, L"&Continue" }
+				static const std::array<TASKDIALOG_BUTTON, maxBtns> buttons{ {
+					{ IDCANCEL, MyMB_GetString(IDCANCEL) },
+					{ IDTRYAGAIN, MyMB_GetString(IDTRYAGAIN) },
+					{ IDCONTINUE, MyMB_GetString(IDCONTINUE) }
 				} };
 
 				tdc.cButtons = static_cast<UINT>(buttons.size());
 				tdc.pButtons = buttons.data();
-				tdc.nDefaultButton = getDefBtn({ { buttons.at(0).nButtonID, buttons.at(1).nButtonID, buttons.at(2).nButtonID } });
+				tdc.nDefaultButton = getDefBtn({ { buttons[0].nButtonID, buttons[1].nButtonID, buttons[2].nButtonID } });
 
 				break;
 			}
@@ -4936,6 +4971,14 @@ namespace NppDarkMode
 			}
 		}
 
+		// NOLINTEND(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
+	// icons
+
 		switch (uType & MB_ICONMASK)
 		{
 			case MB_ICONERROR:
@@ -4946,8 +4989,7 @@ namespace NppDarkMode
 
 			case MB_ICONQUESTION:
 			{
-				tdc.dwFlags |= TDF_USE_HICON_MAIN;
-				tdc.hMainIcon = static_cast<HICON>(::LoadImageW(nullptr, IDI_QUESTION, IMAGE_ICON, 0, 0, LR_SHARED));
+				tdc.pszMainIcon = IDI_QUESTION;
 				break;
 			}
 
@@ -4967,6 +5009,8 @@ namespace NppDarkMode
 				break;
 		}
 
+		// other
+
 		if ((uType & MB_RTLREADING) == MB_RTLREADING)
 		{
 			tdc.dwFlags |= TDF_RTL_LAYOUT;
@@ -4974,6 +5018,7 @@ namespace NppDarkMode
 
 		return tdc;
 	}
+
 	// code adapted from https://github.com/ozone10/win32-darkmodelib
 	int darkMessageBoxW(
 		HWND hWnd,
@@ -4995,5 +5040,17 @@ namespace NppDarkMode
 			return ::MessageBoxW(hWnd, lpText, lpCaption, uType);
 		}
 		return btnPressed;
+	}
+
+	// for luminosity slider control
+	BOOL darkChooseColorW(LPCHOOSECOLORW cc)
+	{
+		if (NppDarkMode::isExperimentalActive() && ::HookClrGetSysColorBrush())
+		{
+			const auto retVal = ::ChooseColorW(cc);
+			::UnhookClrGetSysColorBrush();
+			return retVal;
+		}
+		return ::ChooseColorW(cc);
 	}
 }

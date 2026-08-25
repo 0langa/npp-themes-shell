@@ -105,8 +105,7 @@ int PluginsManager::loadPluginFromPath(const wchar_t *pluginFilePath)
 	NppParameters& nppParams = NppParameters::getInstance();
 
 	auto pi = std::make_unique<PluginInfo>();
-	try
-	{
+	try {
 		pi->_moduleName = pluginFileName;
 		static constexpr int binArchType = NppParameters::archType();
 		if (getBinaryArchitectureType(pluginFilePath) != binArchType)
@@ -206,8 +205,8 @@ int PluginsManager::loadPluginFromPath(const wchar_t *pluginFilePath)
 			char lexName[MAX_EXTERNAL_LEXER_NAME_LEN]{};
 
 			int numLexers = GetLexerCount();
-
-			std::unique_ptr<ExternalLangContainer> containers[30]{};
+			std::unique_ptr<ExternalLangContainer> containers[NB_MAX_EXTERNAL_LANG]{};
+			numLexers = numLexers > NB_MAX_EXTERNAL_LANG ? NB_MAX_EXTERNAL_LANG : numLexers;
 
 			for (int x = 0; x < numLexers; ++x)
 			{
@@ -355,7 +354,9 @@ bool PluginsManager::loadPlugins(const wchar_t* dir, const PluginViewList* plugi
 		const wchar_t* incompatibleWarningWithSolution = L"%s's version %s is not compatible to this version of Notepad++ (v%s).\r\nAs a result the plugin cannot be loaded.\r\n\r\nGo to Updates section and update your plugin to %s for solving the compatibility issue.";
 
 		wstring foundFileName = foundData.cFileName;
-		if (foundFileName != L"." && foundFileName != L".." && _wcsicmp(foundFileName.c_str(), L"Config") != 0)
+		// "Config" holds settings, not plugins; "disabled" holds deactivated plugins moved by
+		// the Plugins Admin dialog - both must never be scanned/loaded as plugin folders.
+		if (foundFileName != L"." && foundFileName != L".." && _wcsicmp(foundFileName.c_str(), L"Config") != 0 && _wcsicmp(foundFileName.c_str(), L"disabled") != 0)
 		{
 			wstring pluginsFullPathFilter = pluginsFolder;
 			pathAppend(pluginsFullPathFilter, foundFileName);
@@ -427,7 +428,8 @@ bool PluginsManager::loadPlugins(const wchar_t* dir, const PluginViewList* plugi
 		while (::FindNextFile(hFindFolder, &foundData))
 		{
 			wstring foundFileName2 = foundData.cFileName;
-			if (foundFileName2 != L"." && foundFileName2 != L".." && _wcsicmp(foundFileName2.c_str(), L"Config") != 0)
+			// same exclusion as above ("Config" and "disabled")
+			if (foundFileName2 != L"." && foundFileName2 != L".." && _wcsicmp(foundFileName2.c_str(), L"Config") != 0 && _wcsicmp(foundFileName2.c_str(), L"disabled") != 0)
 			{
 				wstring pluginsFullPathFilter2 = pluginsFolder;
 				pathAppend(pluginsFullPathFilter2, foundFileName2);
@@ -645,8 +647,7 @@ void PluginsManager::runPluginCommand(size_t i)
 	{
 		if (_pluginsCommands[i]._pFunc != NULL)
 		{
-			try
-			{
+			try {
 				_pluginsCommands[i]._pFunc();
 			}
 			catch (std::exception& e)
@@ -673,8 +674,7 @@ void PluginsManager::runPluginCommand(const wchar_t *pluginName, int commandID)
 		{
 			if (_pluginsCommands[i]._funcID == commandID)
 			{
-				try
-				{
+				try {
 					_pluginsCommands[i]._pFunc();
 				}
 				catch (std::exception& e)
@@ -704,8 +704,7 @@ void PluginsManager::notify(size_t indexPluginInfo, const SCNotification *notifi
 		// To avoid the plugin change the data in SCNotification
 		// Each notification to pass to a plugin is a copy of SCNotification instance
 		SCNotification scNotif = *notification;
-		try
-		{
+		try {
 			_pluginInfos[indexPluginInfo]->_pBeNotified(&scNotif);
 		}
 		catch (std::exception& e)
@@ -743,8 +742,7 @@ void PluginsManager::relayNppMessages(UINT Message, WPARAM wParam, LPARAM lParam
 	{
         if (_pluginInfos[i]->_hLib)
 		{
-			try
-			{
+			try {
 				_pluginInfos[i]->_pMessageProc(Message, wParam, lParam);
 			}
 			catch (std::exception& e)
@@ -775,8 +773,7 @@ bool PluginsManager::relayPluginMessages(UINT Message, WPARAM wParam, LPARAM lPa
 		{
             if (_pluginInfos[i]->_hLib)
 			{
-				try
-				{
+				try {
 					_pluginInfos[i]->_pMessageProc(Message, wParam, lParam);
 				}
 				catch (std::exception& e)
