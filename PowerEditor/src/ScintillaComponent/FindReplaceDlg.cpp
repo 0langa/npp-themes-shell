@@ -2602,7 +2602,7 @@ intptr_t CALLBACK FindReplaceDlg::run_dlgProc(UINT message, WPARAM wParam, LPARA
 							else //if (nbCounted == 0 || nbCounted > 1)
 							{
 								result = pNativeSpeaker->getLocalizedStrFromID("find-status-count-nb-matches", L"Count: $INT_REPLACE$ matches");
-								result = stringReplace(result, L"$INT_REPLACE$", std::to_wstring(nbCounted));
+								result = stringReplace(result, L"$INT_REPLACE$", commafyInt(nbCounted));
 							}
 							result += L" ";
 							result += getScopeInfoForStatusBar(&_options);
@@ -4501,8 +4501,7 @@ wstring FindReplaceDlg::getScopeInfoForStatusBar(FindOption const *pFindOpt) con
 
 void FindReplaceDlg::execSavedCommand(int cmd, uptr_t intValue, const wstring& stringValue)
 {
-	try
-	{
+	try {
 		switch (cmd)
 		{
 			case IDC_FRCOMMAND_INIT:
@@ -5720,9 +5719,9 @@ void Finder::addFileHitCount(int count)
 
 void Finder::addSearchResultInfo(int count, int countSearched, bool searchedEntireNotSelection, const FindOption* pFindOpt)
 {
-	wstring nbResStr = std::to_wstring(count);
-	wstring nbFoundFilesStr = std::to_wstring(_nbFoundFiles);
-	wstring nbSearchedFilesStr = std::to_wstring(countSearched);
+	wstring nbResStr = commafyInt(count);
+	wstring nbFoundFilesStr = commafyInt(_nbFoundFiles);
+	wstring nbSearchedFilesStr = commafyInt(countSearched);
 
 	NativeLangSpeaker* pNativeSpeaker = (NppParameters::getInstance()).getNativeLangSpeaker();
 
@@ -6602,11 +6601,7 @@ void FindIncrementDlg::setFindStatus(FindStatus iStatus, size_t nbCounted, int n
 	NativeLangSpeaker* pNativeSpeaker = (NppParameters::getInstance()).getNativeLangSpeaker();
 
 	if (nbCounted > 0)
-	{
-		wchar_t strFindFSFound[128]{};
-		wsprintf(strFindFSFound, L"%d/%d", nth, nbCounted);
-		statusStr2Display = strFindFSFound;
-	}
+		statusStr2Display = commafyInt(nth) + L"/" + commafyInt(nbCounted);
 
 	switch (iStatus)
 	{

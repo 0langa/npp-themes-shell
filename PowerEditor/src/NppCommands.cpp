@@ -1043,8 +1043,7 @@ void Notepad_plus::command(int id)
 			{
 				pSorter = std::make_unique<RandomSorter>(isDescending, fromColumn, toColumn);
 			}
-			try
-			{
+			try {
 				_pEditView->sortLines(fromLine, toLine, pSorter.get());
 			}
 			catch (size_t& failedLineIndex)
@@ -3853,28 +3852,21 @@ void Notepad_plus::command(int id)
 				if (isCertifVerified)
 				{
 					wstring param;
+					bool isElevationRequired = false;
+
 					if (id == IDM_CONFUPDATERPROXY)
 					{
-						if (!_isAdministrator)
-						{
-							_nativeLangSpeaker.messageBox("GUpProxyConfNeedAdminMode",
-								_pPublicInterface->getHSelf(),
-								L"Please relaunch Notepad++ in Admin mode to configure proxy.",
-								L"Proxy Settings",
-								MB_OK | MB_APPLMODAL);
-							return;
-						}
 						param = L"-options";
+						isElevationRequired = needsElevation4Access(updaterDir, true); // proxy settings storage is ".\updater\gupOptions.xml"
 					}
 					else
-					{	
+					{
 						nppParams.buildGupParams(param);
-
 						param += L" -verbose";
 					}
-					Process updater(updaterFullPath.c_str(), param.c_str(), updaterDir.c_str());
 
-					updater.run();
+					Process updater(updaterFullPath.c_str(), param.c_str(), updaterDir.c_str());
+					updater.run(isElevationRequired);
 				}
 			}
 			break;
@@ -4353,7 +4345,7 @@ void Notepad_plus::command(int id)
 
 						nppParams.getNativeLangSpeaker()->messageBox("ShortcutsXmlHMACMissing",
 							NULL,
-							L"The security information for shortcuts.xml is missing in config.xml.\r\rFor security reasons, the integrity of shortcuts.xml will be checked. To run your customized command, please review the opened shortcuts.xml. If the file content is OK, use \"Validate shortcuts.xml\" from the menu to confirm it.",
+							L"The security information for shortcuts.xml is missing in config.xml.\r\rFor security reasons, the integrity of shortcuts.xml will be checked. To run your customized command, please review the opened shortcuts.xml. If the file content is OK, use \"Validate shortcuts.xml\" from the \"Run\" menu to confirm it.",
 							L"Security Warning",
 							MB_OK);
 					}
@@ -4375,7 +4367,7 @@ void Notepad_plus::command(int id)
 
 							nppParams.getNativeLangSpeaker()->messageBox("ShortcutsXmlTampered",
 								NULL,
-								L"The shortcuts.xml file appears to have been modified manually.\r\rFor security reasons, please review the opened shortcuts.xml. If the file content is OK, use \"Validate shortcuts.xml\" from the menu to confirm it.",
+								L"The shortcuts.xml file appears to have been modified manually.\r\rFor security reasons, please review the opened shortcuts.xml. If the file content is OK, use \"Validate shortcuts.xml\" from the \"Run\" menu to confirm it.",
 								L"Security Warning",
 								MB_OK);
 						}

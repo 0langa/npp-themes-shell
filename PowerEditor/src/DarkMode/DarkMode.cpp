@@ -77,6 +77,11 @@ struct WINDOWCOMPOSITIONATTRIBDATA
 	SIZE_T cbData;
 };
 
+namespace NppDarkMode
+{
+	HBRUSH getDarkerTextBrush();
+}
+
 using fnRtlGetNtVersionNumbers = void (WINAPI *)(LPDWORD major, LPDWORD minor, LPDWORD build);
 using fnSetWindowCompositionAttribute = BOOL (WINAPI *)(HWND hWnd, WINDOWCOMPOSITIONATTRIBDATA*);
 // 1809 17763
@@ -191,8 +196,8 @@ static void FlushMenuThemes()
 
 // limit dark scroll bar to specific windows and their children
 
-std::unordered_set<HWND> g_darkScrollBarWindows;
-std::mutex g_darkScrollBarMutex;
+static std::unordered_set<HWND> g_darkScrollBarWindows;
+static std::mutex g_darkScrollBarMutex;
 
 void EnableDarkScrollBarForWindowAndChildren(HWND hwnd)
 {
@@ -349,8 +354,13 @@ public:
 	ModuleHandle() = delete;
 
 	explicit ModuleHandle(const wchar_t* moduleName) noexcept
-		: m_hModule(::LoadLibraryExW(moduleName, nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32))
+		: m_hModule(::GetModuleHandleW(moduleName))
+		, m_shared(m_hModule != nullptr)
 	{
+		if (!m_shared)
+		{
+			m_hModule = ::LoadLibraryExW(moduleName, nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+		}
 	}
 
 	ModuleHandle(const ModuleHandle&) = delete;
@@ -361,7 +371,7 @@ public:
 
 	~ModuleHandle()
 	{
-		if (m_hModule != nullptr)
+		if (m_hModule != nullptr && !m_shared)
 		{
 			::FreeLibrary(m_hModule);
 			m_hModule = nullptr;
@@ -380,12 +390,10 @@ public:
 
 private:
 	HMODULE m_hModule = nullptr;
+	bool m_shared = false;
 };
 
 using fnFindThunkInModule = auto (*)(void* moduleBase, const char* dllName, const char* funcName)->PIMAGE_THUNK_DATA;
-
-using fnGetThemeColor = auto (WINAPI*)(HTHEME hTheme, int iPartId, int iStateId, int iPropId, COLORREF* pColor)->HRESULT;
-using fnDrawThemeBackgroundEx = auto (WINAPI*)(HTHEME hTheme, HDC hdc, int iPartId, int iStateId, LPCRECT pRect, const DTBGOPTS* pOptions)->HRESULT;
 
 template <typename P>
 static auto ReplaceFunction(IMAGE_THUNK_DATA* addr, const P& newFunction) noexcept -> P
@@ -407,18 +415,19 @@ struct HookData
 {
 	T m_trueFn = nullptr;
 	size_t m_ref = 0;
-	const char* m_dllName = nullptr;
+	const char* m_fromDll = nullptr;
+	const wchar_t* m_hookedDll = nullptr;
 
 	const char* m_fnName = nullptr;
 	fnFindThunkInModule m_findFn = nullptr;
 
 	std::uint16_t m_ord = 0;
 
-	void init(const char* dllName, const char* funcName, const fnFindThunkInModule& findFn) noexcept
+	void init(const char* fromDll, const char* funcName, const fnFindThunkInModule& findFn) noexcept
 	{
-		if (m_dllName == nullptr)
+		if (m_fromDll == nullptr)
 		{
-			m_dllName = dllName;
+			m_fromDll = fromDll;
 			m_fnName = funcName;
 			m_findFn = findFn;
 
@@ -426,11 +435,11 @@ struct HookData
 		}
 	}
 
-	void init(const char* dllName, std::uint16_t ord) noexcept
+	void init(const char* fromDll, std::uint16_t ord) noexcept
 	{
-		if (m_dllName == nullptr)
+		if (m_fromDll == nullptr)
 		{
-			m_dllName = dllName;
+			m_fromDll = fromDll;
 			m_ord = ord;
 
 			m_fnName = nullptr;
@@ -440,14 +449,16 @@ struct HookData
 
 	[[nodiscard]] IMAGE_THUNK_DATA* findAddr(HMODULE hMod) const noexcept
 	{
-		if (m_fnName != nullptr && m_findFn != nullptr)
+		if (m_fnName != nullptr
+			&& m_findFn != nullptr
+			&& m_ord == 0)
 		{
-			return m_findFn(hMod, m_dllName, m_fnName);
+			return m_findFn(hMod, m_fromDll, m_fnName);
 		}
 
 		if (m_ord != 0)
 		{
-			return FindDelayLoadThunkInModule(hMod, m_dllName, m_ord);
+			return FindDelayLoadThunkInModule(hMod, m_fromDll, m_ord);
 		}
 
 		return nullptr;
@@ -455,19 +466,20 @@ struct HookData
 };
 
 template <typename T, typename... InitArgs>
-static auto HookFunction(HookData<T>& hookData, T newFn, const char* dllName, InitArgs&&... args) noexcept -> bool
+static auto HookFunction(HookData<T>& hookData, const wchar_t* hookedDll, T newFn, const char* fromDll, InitArgs&&... args) noexcept -> bool
 {
-	const ModuleHandle moduleComctl(L"comctl32.dll");
-	if (!moduleComctl.isLoaded())
+	hookData.m_hookedDll = hookedDll;
+	const ModuleHandle hookedMod(hookData.m_hookedDll);
+	if (!hookedMod.isLoaded())
 	{
 		return false;
 	}
 
 	if (hookData.m_trueFn == nullptr && hookData.m_ref == 0)
 	{
-		hookData.init(dllName, std::forward<InitArgs>(args)...);
+		hookData.init(fromDll, std::forward<InitArgs>(args)...);
 
-		auto* addr = hookData.findAddr(moduleComctl.get());
+		auto* addr = hookData.findAddr(hookedMod.get());
 		if (addr != nullptr)
 		{
 			hookData.m_trueFn = ReplaceFunction<T>(addr, newFn);
@@ -483,12 +495,12 @@ static auto HookFunction(HookData<T>& hookData, T newFn, const char* dllName, In
 }
 
 template <typename T>
-static void UnhookFunction(HookData<T>& hookData) noexcept
+static size_t UnhookFunction(HookData<T>& hookData) noexcept
 {
-	const ModuleHandle moduleComctl(L"comctl32.dll");
-	if (!moduleComctl.isLoaded())
+	const ModuleHandle hookedMod(hookData.m_hookedDll);
+	if (!hookedMod.isLoaded())
 	{
-		return;
+		return 0;
 	}
 
 	if (hookData.m_ref > 0)
@@ -497,7 +509,7 @@ static void UnhookFunction(HookData<T>& hookData) noexcept
 
 		if (hookData.m_trueFn != nullptr && hookData.m_ref == 0)
 		{
-			auto* addr = hookData.findAddr(moduleComctl.get());
+			auto* addr = hookData.findAddr(hookedMod.get());
 			if (addr != nullptr)
 			{
 				ReplaceFunction<T>(addr, hookData.m_trueFn);
@@ -505,13 +517,16 @@ static void UnhookFunction(HookData<T>& hookData) noexcept
 			}
 		}
 	}
+	return hookData.m_ref;
 }
 
-static HookData<fnGetThemeColor> g_hookDataGetThemeColor{};
-static HookData<fnDrawThemeBackgroundEx> g_hookDataDrawThemeBackgroundEx{};
+static HookData<decltype(&::GetThemeColor)> g_hookDataGetThemeColor{};
+static HookData<decltype(&::DrawThemeBackgroundEx)> g_hookDataDrawThemeBackgroundEx{};
 
-static constexpr COLORREF kMainInstructionTextClr = RGB(96, 205, 255);
+static constexpr COLORREF kMainInstructionTextClr = RGB(153, 235, 255);
 static constexpr COLORREF kOtherTextClr = RGB(255, 255, 255);
+static COLORREF g_mainInstructionTextClr = kMainInstructionTextClr;
+static COLORREF g_otherTextClr = kOtherTextClr;
 
 static HTHEME g_hDarkTheme = nullptr;
 
@@ -535,7 +550,7 @@ static HRESULT WINAPI MyGetThemeColor(
 		{
 			case TDLG_MAININSTRUCTIONPANE:
 			{
-				*pColor = kMainInstructionTextClr;
+				*pColor = g_mainInstructionTextClr;
 				break;
 			}
 
@@ -551,7 +566,7 @@ static HRESULT WINAPI MyGetThemeColor(
 				}
 				else
 				{
-					*pColor = kOtherTextClr;
+					*pColor = g_otherTextClr;
 				}
 				break;
 			}
@@ -625,9 +640,19 @@ bool HookThemeColor() noexcept
 				clrMain = kMainPaneBgClr;
 			}
 
-			if (FAILED(::GetThemeColor(g_hDarkTheme, TDLG_SECONDARYPANEL, 0, TMT_FILLCOLOR, &clrFooter)))
+			if (FAILED(::GetThemeColor(g_hDarkTheme, TDLG_FOOTNOTEPANE, 0, TMT_FILLCOLOR, &clrFooter)))
 			{
 				clrFooter = kFooterBgClr;
+			}
+
+			if (FAILED(::GetThemeColor(g_hDarkTheme, TDLG_PRIMARYPANEL, 0, TMT_TEXTCOLOR, &g_otherTextClr)))
+			{
+				g_otherTextClr = kOtherTextClr;
+			}
+
+			if (FAILED(::GetThemeColor(g_hDarkTheme, TDLG_MAININSTRUCTIONPANE, 0, TMT_TEXTCOLOR, &g_mainInstructionTextClr)))
+			{
+				g_mainInstructionTextClr = kMainInstructionTextClr;
 			}
 		}
 	}
@@ -643,12 +668,16 @@ bool HookThemeColor() noexcept
 	}
 
 	return
-		HookFunction<fnGetThemeColor>(g_hookDataGetThemeColor,
+		HookFunction<decltype(&::GetThemeColor)>(
+			g_hookDataGetThemeColor,
+			L"comctl32.dll",
 			MyGetThemeColor,
 			"uxtheme.dll",
 			static_cast<const char*>("GetThemeColor"),
 			static_cast<fnFindThunkInModule>(FindDelayLoadThunkInModule))
-		&& HookFunction<fnDrawThemeBackgroundEx>(g_hookDataDrawThemeBackgroundEx,
+		&& HookFunction<decltype(&::DrawThemeBackgroundEx)>(
+			g_hookDataDrawThemeBackgroundEx,
+			L"comctl32.dll",
 			MyDrawThemeBackgroundEx,
 			"uxtheme.dll",
 			kDrawThemeBackgroundExOrdinal);
@@ -657,8 +686,8 @@ bool HookThemeColor() noexcept
 
 void UnhookThemeColor() noexcept
 {
-	UnhookFunction<fnGetThemeColor>(g_hookDataGetThemeColor);
-	UnhookFunction<fnDrawThemeBackgroundEx>(g_hookDataDrawThemeBackgroundEx);
+	UnhookFunction<decltype(&::GetThemeColor)>(g_hookDataGetThemeColor);
+	UnhookFunction<decltype(&::DrawThemeBackgroundEx)>(g_hookDataDrawThemeBackgroundEx);
 	if (g_hDarkTheme != nullptr && g_hookDataGetThemeColor.m_ref == 0)
 	{
 		::CloseThemeData(g_hDarkTheme);
@@ -676,4 +705,139 @@ void UnhookThemeColor() noexcept
 		::DeleteObject(g_hBrushBgFooter);
 		g_hBrushBgFooter = nullptr;
 	}
+}
+
+extern "C"
+{
+	static LPCWSTR WINAPI DummyMB_GetString([[maybe_unused]] UINT wBtn) noexcept
+	{
+		return nullptr;
+	}
+}
+static decltype(&DummyMB_GetString) pfMB_GetString = DummyMB_GetString;
+
+void InitMB_GetString() noexcept
+{
+	static bool isInit = false;
+	if (isInit)
+	{
+		return;
+	}
+
+	if (HMODULE hUser32 = ::GetModuleHandleW(L"user32.dll");
+		hUser32 != nullptr)
+	{
+		if (auto proc = ::GetProcAddress(hUser32, "MB_GetString");
+			proc != nullptr)
+		{
+			pfMB_GetString = reinterpret_cast<decltype(&DummyMB_GetString)>(proc);
+		}
+		isInit = true;
+	}
+}
+
+LPCWSTR MyMB_GetString(UINT wBtn) noexcept
+{
+	if (auto str = pfMB_GetString(wBtn - 1);
+		str != nullptr)
+	{
+		return str;
+	}
+
+	switch (wBtn)
+	{
+		case IDOK:
+		{
+			return L"OK";
+		}
+
+		case IDCANCEL:
+		{
+			return L"Cancel";
+		}
+
+		case IDABORT:
+		{
+			return L"&Abort";
+		}
+
+		case IDRETRY:
+		{
+			return L"&Retry";
+		}
+
+		case IDIGNORE:
+		{
+			return L"&Ignore";
+		}
+
+		case IDYES:
+		{
+			return L"&Yes";
+		}
+
+		case IDNO:
+		{
+			return L"&No";
+		}
+
+		case IDCLOSE:
+		{
+			return L"&Close";
+		}
+
+		case IDHELP:
+		{
+			return L"Help";
+		}
+
+		case IDTRYAGAIN:
+		{
+			return L"&Try Again";
+		}
+
+		case IDCONTINUE:
+		{
+			return L"&Continue";
+		}
+
+		default:
+		{
+			return nullptr;
+		}
+	}
+}
+
+static HookData<decltype(&::GetSysColorBrush)> g_hookDataClrGetSysColorBrush{};
+
+extern "C"
+{
+	static HBRUSH WINAPI MyClrGetSysColorBrush(int nIndex) noexcept
+	{
+		if (g_darkModeEnabled
+			&& nIndex == COLOR_BTNTEXT
+			&& NppDarkMode::getDarkerTextBrush() != nullptr)
+		{
+			return NppDarkMode::getDarkerTextBrush();
+		}
+
+		return g_hookDataClrGetSysColorBrush.m_trueFn(nIndex);
+	}
+}
+
+bool HookClrGetSysColorBrush() noexcept
+{
+	return
+		HookFunction<decltype(&::GetSysColorBrush)>(
+			g_hookDataClrGetSysColorBrush,
+			L"comdlg32.dll",
+			MyClrGetSysColorBrush,
+			"user32.dll",
+			static_cast<const char*>("GetSysColorBrush"),
+			FindIatThunkInModule);
+}
+
+size_t UnhookClrGetSysColorBrush() noexcept
+{
+	return UnhookFunction(g_hookDataClrGetSysColorBrush);
 }
