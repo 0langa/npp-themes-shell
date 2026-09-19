@@ -25,6 +25,7 @@
 #include <commctrl.h>
 
 #include "NppConstants.h"
+#include "NppThemes/PopupMenuTheme.h"
 
 using namespace std;
 
@@ -513,7 +514,7 @@ intptr_t CALLBACK VerticalFileSwitcher::run_dlgProc(UINT message, WPARAM wParam,
 		{
 			if (nbSelectedFiles() == 0 || colHeaderRClick)
 			{
-				::TrackPopupMenu(_hGlobalMenu, 
+				NppThemesShell::trackThemedPopupMenu(_hGlobalMenu,
 					NppParameters::getInstance().getNativeLangSpeaker()->isRTL() ? TPM_RIGHTALIGN | TPM_LAYOUTRTL : TPM_LEFTALIGN,
 					GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), 0, _hSelf, NULL);
 				colHeaderRClick = false;

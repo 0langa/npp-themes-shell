@@ -26,24 +26,25 @@ The imported core is compiled directly in the existing Notepad++ solution using 
 - Windows High Contrast forces native render mode and cannot be overridden by profile changes.
 - Typed subscribers receive one generation-stamped snapshot per visible state change.
 - Reversible dark-mode adapter maps resolved semantic roles into existing host brushes/pens, snapshots exact native tone/colors, and restores them for High Contrast, native mode, or deactivation.
+- Reversible app-surface adapter publishes the validated profile and resolved shell palette to dedicated UI consumers, clears them for native/High Contrast rendering, and restores the exact prior registry state on deactivation.
 - Shell-owned tests compile the imported conformance executable and byte-check canonical tokens after checkout line-ending normalization.
 - Dedicated Shell CI compiles Release x64, Win32, and ARM64 without uploading unofficial binaries. Physical ARM64 runtime remains a separate release-qualification gate.
 
-ThemeService, startup persistence, first host palette adapter, and built-in profile selection compile into the application. Additional app-owned surface adapters remain Phase 5 work.
+ThemeService, startup persistence, host palette coordination, app-surface state, built-in profile selection, semantic editor styling, and dedicated main-menu/tab/status consumers compile into the application. Toolbar, popup-menu ownership, docking chrome, panels, dialogs, and other app-owned surfaces remain incremental shell work.
 
 ## Startup profile contract
 
 Shell looks for `NppThemes\active-profile.json` below Notepad++'s resolved settings root. Installed, portable, cloud, and `-settingsDir` modes therefore remain isolated. Missing file keeps native rendering and creates no directory or marker.
 
-Startup accepts only a regular JSON file up to 1 MiB. Profile parsing, migration, palette derivation, and contrast validation finish before host mutation. Shell then durably creates `NppThemes\apply.incomplete`, activates ThemeService and host adapter, and removes marker only after success.
+Startup accepts only a regular JSON file up to 1 MiB. Profile parsing, migration, palette derivation, and contrast validation finish before host mutation. Shell then durably creates `NppThemes\apply.incomplete`, activates ThemeService and both runtime adapters, and removes marker only after success.
 
 Marker found on next launch means previous activation may have crashed. Shell deletes marker, skips custom activation for that launch, and remains native. Following launch may try profile again. Invalid, oversized, unreadable, or unsafe-path input remains native.
 
 The top-level **NppThemes** menu shows the active profile, offers **Disable custom theme**, and selects Northern Lights, Graphite, Midnight Neon, Paper, Warm Sand, or Accessible Dark. Selection validates before mutation, durably replaces the complete canonical v2 profile, applies it immediately, and clears the crash marker only after success. Disable removes the persisted profile and restores the exact renderer mode and palette captured before activation.
 
-Dark profiles enable Notepad++'s host dark renderer; light profiles disable it. Every menu change requests a full host refresh, covering the title bar, menu/toolbar chrome, tabs, status bar, dialogs, and controls already handled by Notepad++'s renderer. This does not yet constitute complete per-surface theming: the editor theme and app-owned surfaces without centralized dark-mode support still need dedicated adapters.
+Dark profiles enable Notepad++'s host dark renderer; light profiles disable it. Every menu change requests a full host refresh for centralized controls. A semantic Scintilla overlay applies editor background, lexer foreground roles, typography, selection, caret, current line, whitespace, edge, and margin colors. Dedicated consumers apply resolved main-menu, document-tab, and status-bar roles in both light and dark profiles. Popup menus still use Notepad++'s centralized renderer; toolbar, docking, panels, dialogs, and remaining app-owned surfaces do not yet consume all dedicated roles.
 
-Forced Windows High Contrast switches active runtime to native colors and disables the custom dark renderer immediately. The selected profile mode and palette resume only after High Contrast ends. Deleting or renaming `active-profile.json` still disables startup activation on next launch, but the menu is the supported runtime path.
+Forced Windows High Contrast switches active runtime to native colors, clears app-surface state, reloads native editor styles, and disables the custom dark renderer immediately. The selected profile mode, editor overlay, and surface palette resume only after High Contrast ends. Deleting or renaming `active-profile.json` still disables startup activation on next launch, but the menu is the supported runtime path.
 
 ## Safety and release rules
 

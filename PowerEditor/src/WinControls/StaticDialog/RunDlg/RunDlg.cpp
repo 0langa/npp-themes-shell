@@ -31,6 +31,7 @@
 #include "CustomFileDialog.h"
 #include "Notepad_plus_msgs.h"
 #include "NppDarkMode.h"
+#include "NppThemes/PopupMenuTheme.h"
 #include "Parameters.h"
 #include "RunDlg_rc.h"
 #include "StaticDialog.h"
@@ -488,7 +489,7 @@ intptr_t CALLBACK RunDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam
 					HMENU hVariablePopup;  // shortcut menu
 					hmenu = ::LoadMenu(_hInst, MAKEINTRESOURCE(IDR_RUN_DLG_MENU_VARIABLES));
 					hVariablePopup = ::GetSubMenu(hmenu, 0);
-					TrackPopupMenu(hVariablePopup, TPM_LEFTALIGN, rcButton.right, rcButton.top, 0, _hSelf, NULL);
+					NppThemesShell::trackThemedPopupMenu(hVariablePopup, TPM_LEFTALIGN, rcButton.right, rcButton.top, 0, _hSelf, NULL);
 					PostMessage(_hSelf, WM_NULL, 0, 0);
 					DestroyMenu(hmenu);
 

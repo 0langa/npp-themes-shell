@@ -665,6 +665,7 @@ public:
 	}
 
 	void defineDocType(LangType typeDoc);	//setup stylers for active document
+	void applyNppThemesEditorTheme(LangType typeDoc);
 
 	void addCustomWordChars() const;
 	void restoreDefaultWordChars() const;

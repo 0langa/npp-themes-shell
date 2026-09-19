@@ -31,6 +31,7 @@
 #include "DoubleBuffer/DoubleBuffer.h"
 #include "NppConstants.h"
 #include "NppDarkMode.h"
+#include "NppThemes/AppSurfaceTheme.h"
 #include "Window.h"
 #include "dpiManagerV2.h"
 
@@ -104,6 +105,11 @@ struct StatusBarSubclassInfo
 	}
 };
 
+static COLORREF toStatusColor(const nppthemes::Color color)
+{
+	return RGB((color >> 16) & 0xFFU, (color >> 8) & 0xFFU, color & 0xFFU);
+}
+
 
 static LRESULT CALLBACK StatusBarSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
 {
@@ -113,27 +119,50 @@ static LRESULT CALLBACK StatusBarSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, L
 	{
 		case WM_ERASEBKGND:
 		{
-			if (!NppDarkMode::isEnabled())
+			const auto* surfaceTheme = NppThemesShell::activeAppSurfaceTheme();
+			if (!NppDarkMode::isEnabled() && !surfaceTheme)
 			{
 				break;  // Let the control paint background the default way
 			}
 
 			RECT rc{};
 			::GetClientRect(hWnd, &rc);
-			::FillRect(reinterpret_cast<HDC>(wParam), &rc, NppDarkMode::getBackgroundBrush());
+			if (surfaceTheme)
+			{
+				const HBRUSH brush = ::CreateSolidBrush(toStatusColor(surfaceTheme->palette.statusBackground));
+				::FillRect(reinterpret_cast<HDC>(wParam), &rc, brush);
+				::DeleteObject(brush);
+			}
+			else
+			{
+				::FillRect(reinterpret_cast<HDC>(wParam), &rc, NppDarkMode::getBackgroundBrush());
+			}
 			return TRUE;
 		}
 
 		case WM_PAINT:
 		case WM_PRINTCLIENT:
 		{
-			if (!NppDarkMode::isEnabled())
+			const auto* surfaceTheme = NppThemesShell::activeAppSurfaceTheme();
+			if (!NppDarkMode::isEnabled() && !surfaceTheme)
 			{
 				break;  // Let the control paint itself the default way
 			}
 
 			PAINTSTRUCT ps{};
 			HDC hdc = (uMsg == WM_PAINT) ? ::BeginPaint(hWnd, &ps) : reinterpret_cast<HDC>(wParam);
+			HBRUSH surfaceBackgroundBrush = nullptr;
+			HBRUSH surfaceSeparatorBrush = nullptr;
+			HPEN surfaceSeparatorPen = nullptr;
+			if (surfaceTheme)
+			{
+				surfaceBackgroundBrush = ::CreateSolidBrush(toStatusColor(surfaceTheme->palette.statusBackground));
+				surfaceSeparatorBrush = ::CreateSolidBrush(toStatusColor(surfaceTheme->palette.statusSeparator));
+				surfaceSeparatorPen = ::CreatePen(PS_SOLID, 1, toStatusColor(surfaceTheme->palette.statusSeparator));
+				RECT client{};
+				::GetClientRect(hWnd, &client);
+				::FillRect(hdc, &client, surfaceBackgroundBrush);
+			}
 
 			struct {
 				int horizontal = 0;
@@ -146,7 +175,7 @@ static LRESULT CALLBACK StatusBarSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, L
 			const auto style = ::GetWindowLongPtr(hWnd, GWL_STYLE);
 			bool isSizeGrip = style & SBARS_SIZEGRIP;
 
-			auto holdPen = static_cast<HPEN>(::SelectObject(hdc, NppDarkMode::getEdgePen()));
+			auto holdPen = static_cast<HPEN>(::SelectObject(hdc, surfaceSeparatorPen ? surfaceSeparatorPen : NppDarkMode::getEdgePen()));
 
 			auto holdFont = static_cast<HFONT>(::SelectObject(hdc, pStatusBarInfo->_hFont));
 
@@ -184,7 +213,7 @@ static LRESULT CALLBACK StatusBarSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, L
 					ownerDraw = true;
 				}
 				SetBkMode(hdc, TRANSPARENT);
-				SetTextColor(hdc, NppDarkMode::getTextColor());
+				SetTextColor(hdc, surfaceTheme ? toStatusColor(surfaceTheme->palette.statusForeground) : NppDarkMode::getTextColor());
 
 				rcPart.left += borders.between;
 				rcPart.right -= borders.vertical;
@@ -213,7 +242,7 @@ static LRESULT CALLBACK StatusBarSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, L
 
 				if (!isSizeGrip && i < (nParts - 1))
 				{
-					FillRect(hdc, &rcDivider, NppDarkMode::getCtrlBackgroundBrush());
+					FillRect(hdc, &rcDivider, surfaceSeparatorBrush ? surfaceSeparatorBrush : NppDarkMode::getCtrlBackgroundBrush());
 				}
 			}
 
@@ -231,6 +260,12 @@ static LRESULT CALLBACK StatusBarSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, L
 
 			::SelectObject(hdc, holdFont);
 			::SelectObject(hdc, holdPen);
+			if (surfaceSeparatorPen)
+				::DeleteObject(surfaceSeparatorPen);
+			if (surfaceSeparatorBrush)
+				::DeleteObject(surfaceSeparatorBrush);
+			if (surfaceBackgroundBrush)
+				::DeleteObject(surfaceBackgroundBrush);
 
 			if (uMsg == WM_PAINT)
 			{

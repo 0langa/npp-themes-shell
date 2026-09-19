@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 #include "Common.h"
+#include "NppThemes/PopupMenuTheme.h"
 
 
 
@@ -42,7 +43,7 @@ public:
 	bool isCreated() const {return _hMenu != NULL;}
 	
 	void display(const POINT & p) const {
-		::TrackPopupMenu(_hMenu, TPM_LEFTALIGN, p.x, p.y, 0, _hParent, NULL);
+		NppThemesShell::trackThemedPopupMenu(_hMenu, TPM_LEFTALIGN, p.x, p.y, 0, _hParent, NULL);
 	}
 
 	void display(HWND hwnd) const;

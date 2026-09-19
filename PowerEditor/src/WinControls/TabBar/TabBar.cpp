@@ -19,6 +19,7 @@
 #include "TabBar.h"
 #include "Parameters.h"
 #include "DoubleBuffer/DoubleBuffer.h"
+#include "NppThemes/AppSurfaceTheme.h"
 
 #include <cwchar>
 #include "NppConstants.h"
@@ -36,6 +37,11 @@ COLORREF TabBarPlus::_inactiveBgColour = RGB(192, 192, 192);
 
 HWND TabBarPlus::_tabbrPlusInstanceHwndArray[nbCtrlMax] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 int TabBarPlus::_nbCtrl = 0;
+
+static COLORREF toTabColor(const nppthemes::Color color)
+{
+	return RGB((color >> 16) & 0xFFU, (color >> 8) & 0xFFU, color & 0xFFU);
+}
 
 void TabBar::init(HINSTANCE hInst, HWND parent, bool isVertical, bool isMultiLine)
 {
@@ -1233,14 +1239,24 @@ LRESULT TabBarPlus::runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPara
 
 		case WM_ERASEBKGND:
 		{
-			if (!NppDarkMode::isEnabled())
+			const auto* surfaceTheme = NppThemesShell::activeAppSurfaceTheme();
+			if (!NppDarkMode::isEnabled() && !surfaceTheme)
 			{
 				break;	// Let the control paint background the default way
 			}
 
 			RECT rc{};
 			::GetClientRect(hwnd, &rc);
-			::FillRect(reinterpret_cast<HDC>(wParam), &rc, NppDarkMode::getDlgBackgroundBrush());
+			if (surfaceTheme)
+			{
+				const HBRUSH brush = ::CreateSolidBrush(toTabColor(surfaceTheme->palette.tabInactive));
+				::FillRect(reinterpret_cast<HDC>(wParam), &rc, brush);
+				::DeleteObject(brush);
+			}
+			else
+			{
+				::FillRect(reinterpret_cast<HDC>(wParam), &rc, NppDarkMode::getDlgBackgroundBrush());
+			}
 			return TRUE;
 		}
 
@@ -1248,19 +1264,30 @@ LRESULT TabBarPlus::runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPara
 		case WM_PRINTCLIENT:
 		{
 			LONG_PTR dwStyle = GetWindowLongPtr(hwnd, GWL_STYLE);
-			if (!NppDarkMode::isEnabled() || !(dwStyle & TCS_OWNERDRAWFIXED))
+			const auto* surfaceTheme = NppThemesShell::activeAppSurfaceTheme();
+			if ((!NppDarkMode::isEnabled() && !surfaceTheme) || !(dwStyle & TCS_OWNERDRAWFIXED))
 			{
 				break;	// Let the control paint itself the default way
 			}
 
 			PAINTSTRUCT ps{};
 			HDC hdc = (Message == WM_PAINT) ? ::BeginPaint(hwnd, &ps) : reinterpret_cast<HDC>(wParam);
+			HPEN surfacePen = nullptr;
+			if (surfaceTheme)
+			{
+				const HBRUSH background = ::CreateSolidBrush(toTabColor(surfaceTheme->palette.tabInactive));
+				RECT client{};
+				::GetClientRect(hwnd, &client);
+				::FillRect(hdc, &client, background);
+				::DeleteObject(background);
+				surfacePen = ::CreatePen(PS_SOLID, 1, toTabColor(surfaceTheme->palette.border));
+			}
 
 			const bool hasMultipleLines = ((dwStyle & TCS_BUTTONS) == TCS_BUTTONS);
 
 			UINT id = ::GetDlgCtrlID(hwnd);
 
-			auto holdPen = static_cast<HPEN>(::SelectObject(hdc, NppDarkMode::getEdgePen()));
+			auto holdPen = static_cast<HPEN>(::SelectObject(hdc, surfacePen ? surfacePen : NppDarkMode::getEdgePen()));
 
 			HRGN holdClip = CreateRectRgn(0, 0, 0, 0);
 			if (1 != GetClipRgn(hdc, holdClip))
@@ -1387,6 +1414,8 @@ LRESULT TabBarPlus::runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPara
 			}
 
 			SelectObject(hdc, holdPen);
+			if (surfacePen)
+				::DeleteObject(surfacePen);
 
 			if (Message == WM_PAINT)
 			{
@@ -1419,6 +1448,8 @@ LRESULT TabBarPlus::runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPara
 
 void TabBarPlus::drawItem(DRAWITEMSTRUCT* pDrawItemStruct, bool isDarkMode)
 {
+	const auto* surfaceTheme = NppThemesShell::activeAppSurfaceTheme();
+	const bool isCustomDrawing = isDarkMode || surfaceTheme;
 	RECT rect = pDrawItemStruct->rcItem;
 
 	int nTab = pDrawItemStruct->itemID;
@@ -1433,13 +1464,16 @@ void TabBarPlus::drawItem(DRAWITEMSTRUCT* pDrawItemStruct, bool isDarkMode)
 	tci.cchTextMax = MAX_PATH-1;
 
 	::SendMessage(_hSelf, TCM_GETITEM, nTab, reinterpret_cast<LPARAM>(&tci));
-	
-	const COLORREF colorActiveBg = isDarkMode ? NppDarkMode::getCtrlBackgroundColor() : ::GetSysColor(COLOR_BTNFACE);
-	const COLORREF colorInactiveBgBase = isDarkMode ? NppDarkMode::getBackgroundColor() : ::GetSysColor(COLOR_BTNFACE);
-	
-	COLORREF colorInactiveBg = _inactiveBgColour;
-	COLORREF colorActiveText = _activeTextColour;
-	COLORREF colorInactiveText = _inactiveTextColour;
+	Buffer* buf = reinterpret_cast<Buffer*>(tci.lParam);
+
+	const COLORREF colorActiveBg = surfaceTheme ? toTabColor(surfaceTheme->palette.tabActive) :
+		(isDarkMode ? NppDarkMode::getCtrlBackgroundColor() : ::GetSysColor(COLOR_BTNFACE));
+	const COLORREF colorInactiveBgBase = surfaceTheme ? toTabColor(surfaceTheme->palette.tabInactive) :
+		(isDarkMode ? NppDarkMode::getBackgroundColor() : ::GetSysColor(COLOR_BTNFACE));
+
+	COLORREF colorInactiveBg = surfaceTheme ? toTabColor(surfaceTheme->palette.tabInactive) : _inactiveBgColour;
+	COLORREF colorActiveText = surfaceTheme ? toTabColor(surfaceTheme->palette.tabForeground) : _activeTextColour;
+	COLORREF colorInactiveText = surfaceTheme ? toTabColor(surfaceTheme->palette.tabForeground) : _inactiveTextColour;
 
 	if (!NppDarkMode::useTabTheme() && isDarkMode)
 	{
@@ -1467,7 +1501,7 @@ void TabBarPlus::drawItem(DRAWITEMSTRUCT* pDrawItemStruct, bool isDarkMode)
 	// equalize drawing areas of active and inactive tabs
 	int paddingDynamicTwoX = _dpiManager.scale(2);
 	int paddingDynamicTwoY = paddingDynamicTwoX;
-	if (isSelected && !isDarkMode)
+	if (isSelected && !isCustomDrawing)
 	{
 		// the drawing area of the active tab extends on all borders by default
 		const int xEdge = _dpiManager.getSystemMetricsForDpi(SM_CXEDGE);
@@ -1533,17 +1567,19 @@ void TabBarPlus::drawItem(DRAWITEMSTRUCT* pDrawItemStruct, bool isDarkMode)
 			int topBarHeight = _dpiManager.scale(4);
 			if (isVertical)
 			{
-				barRect.left -= (hasMultipleLines && isDarkMode) ? 0 : paddingDynamicTwoX;
+				barRect.left -= (hasMultipleLines && isCustomDrawing) ? 0 : paddingDynamicTwoX;
 				barRect.right = barRect.left + topBarHeight;
 			}
 			else
 			{
-				barRect.top -= (hasMultipleLines && isDarkMode) ? 0 : paddingDynamicTwoY;
+				barRect.top -= (hasMultipleLines && isCustomDrawing) ? 0 : paddingDynamicTwoY;
 				barRect.bottom = barRect.top + topBarHeight;
 			}
 
 			const bool isFocused = ::SendMessage(_hParent, NPPM_INTERNAL_ISFOCUSEDTAB, 0, reinterpret_cast<LPARAM>(_hSelf));
 			COLORREF topBarColour = isFocused ? _activeTopBarFocusedColour : _activeTopBarUnfocusedColour; // #FAAA3C, #FAD296
+			if (surfaceTheme)
+				topBarColour = toTabColor(surfaceTheme->palette.focusRing);
 
 			if (individualColourId != -1)
 			{
@@ -1574,7 +1610,11 @@ void TabBarPlus::drawItem(DRAWITEMSTRUCT* pDrawItemStruct, bool isDarkMode)
 			brushColour = colorActiveBg;
 		}
 		
-		if (_currentHoverTabItem == nTab && brushColour != colorActiveBg && !_isDragging) // hover on a "darker" inactive tab
+		if (surfaceTheme && _currentHoverTabItem == nTab && individualColourId == -1 && !_isDragging)
+		{
+			brushColour = toTabColor(surfaceTheme->palette.tabHover);
+		}
+		else if (_currentHoverTabItem == nTab && brushColour != colorActiveBg && !_isDragging) // hover on a "darker" inactive tab
 		{
 			HLSColour hls(brushColour);
 			brushColour = hls.toRGB4DarkModeWithTuning(15, 0); // make it lighter slightly
@@ -1585,9 +1625,18 @@ void TabBarPlus::drawItem(DRAWITEMSTRUCT* pDrawItemStruct, bool isDarkMode)
 		::DeleteObject(static_cast<HGDIOBJ>(hBrush));
 	}
 
-	if (isDarkMode && hasMultipleLines)
+	if (isCustomDrawing && hasMultipleLines)
 	{
-		::FrameRect(hDC, &pDrawItemStruct->rcItem, NppDarkMode::getEdgeBrush());
+		if (surfaceTheme)
+		{
+			const HBRUSH border = ::CreateSolidBrush(toTabColor(surfaceTheme->palette.border));
+			::FrameRect(hDC, &pDrawItemStruct->rcItem, border);
+			::DeleteObject(border);
+		}
+		else
+		{
+			::FrameRect(hDC, &pDrawItemStruct->rcItem, NppDarkMode::getEdgeBrush());
+		}
 	}
 
 	// draw close button
@@ -1614,12 +1663,17 @@ void TabBarPlus::drawItem(DRAWITEMSTRUCT* pDrawItemStruct, bool isDarkMode)
 		}
 
 		RECT buttonRect = _closeButtonZone.getButtonRectFrom(rect, isVertical);
+		if (surfaceTheme && _isCloseHover && _currentHoverTabItem == nTab)
+		{
+			const HBRUSH closeHover = ::CreateSolidBrush(toTabColor(surfaceTheme->palette.tabCloseHover));
+			::FillRect(hDC, &buttonRect, closeHover);
+			::DeleteObject(closeHover);
+		}
 
 		::ImageList_Draw(_hCloseBtnImgLst, idxCloseImg, hDC, buttonRect.left, buttonRect.top, ILD_TRANSPARENT);
 	}
 
 	// draw pin button
-	Buffer* buf = reinterpret_cast<Buffer*>(tci.lParam);
 	if (drawTabPinButton && _hPinBtnImgLst != nullptr && buf)
 	{
 		// Each tab combined with the following stats :
@@ -1795,11 +1849,11 @@ void TabBarPlus::drawItem(DRAWITEMSTRUCT* pDrawItemStruct, bool isDarkMode)
 		flags |= DT_TOP;
 
 		const int paddingText = ((pDrawItemStruct->rcItem.bottom - pDrawItemStruct->rcItem.top) - (textHeight + textDescent)) / 2;
-		const int paddingDescent = !hasMultipleLines ? ((textDescent + ((isDarkMode || !isSelected) ? 1 : 0)) / 2) : 0;
+		const int paddingDescent = !hasMultipleLines ? ((textDescent + ((isCustomDrawing || !isSelected) ? 1 : 0)) / 2) : 0;
 		rect.top = pDrawItemStruct->rcItem.top + paddingText + paddingDescent;
 		rect.bottom = pDrawItemStruct->rcItem.bottom - paddingText + paddingDescent;
 
-		if (isDarkMode || !isSelected || drawTopBar)
+		if (isCustomDrawing || !isSelected || drawTopBar)
 		{
 			rect.top += paddingDynamicTwoY;
 		}
@@ -1809,6 +1863,8 @@ void TabBarPlus::drawItem(DRAWITEMSTRUCT* pDrawItemStruct, bool isDarkMode)
 	}
 
 	COLORREF textColor = isSelected ? colorActiveText : colorInactiveText;
+	if (surfaceTheme && buf && buf->isDirty())
+		textColor = toTabColor(surfaceTheme->palette.tabDirty);
 
 	::SetTextColor(hDC, textColor);
 

@@ -42,6 +42,7 @@
 #include "fileBrowser.h"
 #include "Common.h"
 #include "NppDarkMode.h"
+#include "NppThemes/PopupMenuTheme.h"
 #include "dpiManagerV2.h"
 #include "ImageListSet.h"
 
@@ -9342,7 +9343,7 @@ BOOL Notepad_plus::notifyTBShowMenu(LPNMTOOLBARW lpnmtb, const char* menuPosId)
 
 			const UINT flags = _nativeLangSpeaker.isRTL() ? (TPM_RIGHTALIGN | TPM_RIGHTBUTTON | TPM_LAYOUTRTL) : (TPM_LEFTALIGN | TPM_LEFTBUTTON);
 
-			::TrackPopupMenuEx(hPopupMenu,
+			NppThemesShell::trackThemedPopupMenuEx(hPopupMenu,
 				flags | TPM_VERTICAL,
 				rcItem.left, rcItem.bottom, _pPublicInterface->getHSelf(), &tpm);
 
@@ -9370,7 +9371,7 @@ BOOL Notepad_plus::notifyTBShowMenu(LPNMTOOLBARW lpnmtb, const char* menuPosId, 
 
 		const UINT flags = _nativeLangSpeaker.isRTL() ? (TPM_RIGHTALIGN | TPM_RIGHTBUTTON | TPM_LAYOUTRTL) : (TPM_LEFTALIGN | TPM_LEFTBUTTON);
 
-		::TrackPopupMenuEx(hPopupMenu,
+		NppThemesShell::trackThemedPopupMenuEx(hPopupMenu,
 			flags | TPM_VERTICAL,
 			rcItem.left, rcItem.bottom, _pPublicInterface->getHSelf(), &tpm);
 

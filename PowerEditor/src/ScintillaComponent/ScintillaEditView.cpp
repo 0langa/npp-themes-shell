@@ -48,6 +48,7 @@
 #include "Common.h"
 #include "NppConstants.h"
 #include "NppDarkMode.h"
+#include "NppThemes/AppSurfaceTheme.h"
 #include "Parameters.h"
 #include "Sorters.h"
 #include "UserDefineDialog.h"
@@ -61,6 +62,22 @@ using namespace std;
 
 static constexpr int MAX_FOLD_COLLAPSE_LEVEL = 8;
 static constexpr int MAX_FOLD_LINES_MORE_THAN = 99;
+
+namespace {
+
+COLORREF toScintillaColor(const nppthemes::Color color)
+{
+	return RGB((color >> 16) & 0xFFU, (color >> 8) & 0xFFU, color & 0xFFU);
+}
+
+nppthemes::Color fromScintillaColor(const COLORREF color)
+{
+	return (static_cast<nppthemes::Color>(GetRValue(color)) << 16) |
+		(static_cast<nppthemes::Color>(GetGValue(color)) << 8) |
+		static_cast<nppthemes::Color>(GetBValue(color));
+}
+
+} // namespace
 
 // initialize the static variable
 bool ScintillaEditView::_SciInit = false;
@@ -2180,6 +2197,58 @@ void ScintillaEditView::defineDocType(LangType typeDoc)
 		if (currentIndentMode != docIndentMode)
 			execute(SCI_SETINDENTATIONGUIDES, docIndentMode);
 	}
+
+	applyNppThemesEditorTheme(typeDoc);
+}
+
+void ScintillaEditView::applyNppThemesEditorTheme(const LangType typeDoc)
+{
+	const auto* surfaceTheme = NppThemesShell::activeAppSurfaceTheme();
+	if (!surfaceTheme)
+		return;
+
+	const auto& profile = surfaceTheme->profile;
+	const auto& palette = profile.palette;
+	const char* language = "text";
+	if (typeDoc >= L_TEXT && typeDoc <= L_EXTERNAL && _langNameInfoArray[typeDoc]._lexerID)
+		language = _langNameInfoArray[typeDoc]._lexerID;
+
+	const auto background = toScintillaColor(palette.background);
+	for (int styleId = 0; styleId <= STYLE_MAX; ++styleId)
+	{
+		const auto existing = static_cast<COLORREF>(execute(SCI_STYLEGETFORE, styleId));
+		const auto foreground = nppthemes::semanticColorForStyle(
+			profile, language, styleId, fromScintillaColor(existing));
+		execute(SCI_STYLESETFORE, styleId, toScintillaColor(foreground));
+		execute(SCI_STYLESETBACK, styleId, background);
+		execute(SCI_STYLESETFONT, styleId, reinterpret_cast<LPARAM>(profile.fontFamily.c_str()));
+		execute(SCI_STYLESETSIZEFRACTIONAL, styleId, profile.fontSizePt * SC_FONT_SIZE_MULTIPLIER);
+	}
+
+	execute(SCI_STYLESETFORE, STYLE_DEFAULT, toScintillaColor(palette.foreground));
+	execute(SCI_STYLESETBACK, STYLE_DEFAULT, background);
+	execute(SCI_STYLESETFORE, STYLE_LINENUMBER, toScintillaColor(palette.muted));
+	execute(SCI_STYLESETBACK, STYLE_LINENUMBER, toScintillaColor(palette.surface));
+	execute(SCI_STYLESETFORE, STYLE_INDENTGUIDE, toScintillaColor(palette.whitespace));
+	execute(SCI_STYLESETFORE, STYLE_BRACELIGHT, toScintillaColor(palette.accent));
+	execute(SCI_STYLESETFORE, STYLE_BRACEBAD, toScintillaColor(surfaceTheme->palette.iconError));
+
+	setElementColour(SC_ELEMENT_SELECTION_BACK, toScintillaColor(palette.selection));
+	setElementColour(SC_ELEMENT_SELECTION_INACTIVE_BACK, toScintillaColor(palette.selection));
+	setElementColour(SC_ELEMENT_SELECTION_ADDITIONAL_BACK, toScintillaColor(palette.selection));
+	setElementColour(SC_ELEMENT_SELECTION_TEXT, toScintillaColor(palette.foreground));
+	setElementColour(SC_ELEMENT_SELECTION_INACTIVE_TEXT, toScintillaColor(palette.foreground));
+	setElementColour(SC_ELEMENT_SELECTION_ADDITIONAL_TEXT, toScintillaColor(palette.foreground));
+	setElementColour(SC_ELEMENT_CARET, toScintillaColor(palette.caret));
+	setElementColour(SC_ELEMENT_CARET_ADDITIONAL, toScintillaColor(palette.caret));
+	setElementColour(SC_ELEMENT_CARET_LINE_BACK, toScintillaColor(palette.currentLine));
+	execute(SCI_SETWHITESPACEFORE, true, toScintillaColor(palette.whitespace));
+	execute(SCI_SETEDGECOLOUR, toScintillaColor(palette.muted));
+	execute(SCI_SETFOLDMARGINCOLOUR, true, toScintillaColor(palette.surface));
+	execute(SCI_SETFOLDMARGINHICOLOUR, true, background);
+	execute(SCI_SETMARGINBACKN, _SC_MARGE_SYMBOL, toScintillaColor(palette.surface));
+	execute(SCI_SETMARGINBACKN, _SC_MARGE_CHANGEHISTORY, toScintillaColor(palette.surface));
+	redraw();
 }
 
 BufferID ScintillaEditView::attachDefaultDoc()
@@ -3369,6 +3438,9 @@ void ScintillaEditView::performGlobalStyles()
 		npcCustomColor = pStyle->_fgColor;
 	}
 	setNpcAndCcUniEOL(npcCustomColor);
+
+	const auto typeDoc = _currentBuffer ? _currentBuffer->getLangType() : L_TEXT;
+	applyNppThemesEditorTheme(typeDoc);
 }
 
 void ScintillaEditView::showNpc(bool willBeShown, bool isSearchResult)

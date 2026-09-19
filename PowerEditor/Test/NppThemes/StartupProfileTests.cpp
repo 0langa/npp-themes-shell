@@ -3,7 +3,9 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <string>
+#include <utility>
 
 #include "NppThemes/StartupProfileStore.h"
 #include "NppThemes/ThemeRuntime.h"
@@ -64,6 +66,21 @@ public:
     bool dark{};
 };
 
+class RecordingSurfaceHost final : public NppThemesShell::AppSurfaceThemeHost {
+public:
+    [[nodiscard]] std::optional<NppThemesShell::AppSurfaceThemeState> capture() const override {
+        return current;
+    }
+
+    void apply(std::optional<NppThemesShell::AppSurfaceThemeState> state) override {
+        current = std::move(state);
+        ++applyCount;
+    }
+
+    std::optional<NppThemesShell::AppSurfaceThemeState> current;
+    int applyCount{};
+};
+
 } // namespace
 
 int main() {
@@ -101,20 +118,26 @@ int main() {
     require(std::filesystem::exists(store.profilePath()), "rejected removal preserves active profile");
 
     RecordingHost host;
+    RecordingSurfaceHost surfaceHost;
     const auto native = host.current;
-    NppThemesShell::ThemeRuntime runtime(host);
+    NppThemesShell::ThemeRuntime runtime(host, surfaceHost);
     const auto activated = runtime.initialize(temporary.path, false);
     require(activated.status == NppThemesShell::StartupProfileStatus::Ready, "valid startup profile activates");
     require(runtime.isActive(), "runtime reports active adapter");
     require(host.current.tone == 32, "runtime applies customized host tone");
     require(host.dark == profile.dark, "startup coordinates host renderer with profile mode");
+    require(surfaceHost.current && surfaceHost.current->profile.id == profile.id,
+            "startup publishes app-surface theme state");
     require(!std::filesystem::exists(store.markerPath()), "activation commits marker cleanup");
     runtime.setHighContrastActive(true);
     require(host.current == native, "High Contrast restores exact native state");
     require(!host.dark, "High Contrast disables custom dark renderer");
+    require(!surfaceHost.current, "High Contrast clears app-surface theme state");
     runtime.setHighContrastActive(false);
     require(host.current.tone == 32, "custom palette resumes after High Contrast");
     require(host.dark == profile.dark, "profile renderer mode resumes after High Contrast");
+    require(surfaceHost.current && surfaceHost.current->profile.id == profile.id,
+            "app-surface theme resumes after High Contrast");
 
     auto invalidProfile = profile;
     invalidProfile.fontSizePt = 2;
@@ -140,12 +163,14 @@ int main() {
     require(host.dark, "dark profile enables host dark renderer");
     require(runtime.disable(error), "runtime disable succeeds");
     require(!runtime.isActive(), "disable deactivates adapter");
+    require(!surfaceHost.current, "disable restores native app-surface state");
     require(!host.dark, "disable restores original renderer mode");
     require(!std::filesystem::exists(store.profilePath()), "disable removes persisted profile");
 
     require(runtime.selectProfile(darkProfile, error), "selection works again after disable");
     runtime.shutdown();
     require(host.current == native, "runtime shutdown restores native state");
+    require(!surfaceHost.current, "runtime shutdown restores native app-surface state");
     require(!host.dark, "runtime shutdown restores original renderer mode");
 
     TemporaryDirectory oversizedRoot;

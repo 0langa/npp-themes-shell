@@ -16,6 +16,7 @@
 
 #include "json.hpp"
 #include "functionListPanel.h"
+#include "NppThemes/PopupMenuTheme.h"
 #include "ScintillaEditView.h"
 #include "localization.h"
 #include <fstream>
@@ -364,7 +365,7 @@ void FunctionListPanel::showPreferencesMenu()
 	::GetWindowRect(_hToolbarMenu, &rectToolbar);
 	::SendMessage(_hToolbarMenu, TB_GETRECT, IDC_PREFERENCEBUTTON_FUNCLIST, reinterpret_cast<LPARAM>(&rectPreferencesButton));
 
-	::TrackPopupMenu(_hPreferencesMenu,
+	NppThemesShell::trackThemedPopupMenu(_hPreferencesMenu,
 		NppParameters::getInstance().getNativeLangSpeaker()->isRTL() ? TPM_RIGHTALIGN | TPM_LAYOUTRTL : TPM_LEFTALIGN,
 		rectToolbar.left + rectPreferencesButton.left,
 		rectToolbar.top + rectPreferencesButton.bottom,

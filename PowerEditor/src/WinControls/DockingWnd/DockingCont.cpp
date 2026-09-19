@@ -21,6 +21,7 @@
 #include "ToolTip.h"
 #include "Parameters.h"
 #include "localization.h"
+#include "NppThemes/AppSurfaceTheme.h"
 
 using namespace std;
 
@@ -30,6 +31,29 @@ using namespace std;
 
 static HWND		hWndServer		= NULL;
 static HHOOK	hookMouse		= NULL;
+
+static bool useThemedDocking() noexcept
+{
+	return NppDarkMode::isEnabled() || NppThemesShell::activeAppSurfaceTheme() != nullptr;
+}
+
+static HBRUSH dockingBrush(NppThemesShell::AppSurfaceRole role, HBRUSH fallback) noexcept
+{
+	auto brush = NppThemesShell::activeAppSurfaceBrush(role);
+	return brush == nullptr ? fallback : brush;
+}
+
+static HPEN dockingPen(NppThemesShell::AppSurfaceRole role, HPEN fallback) noexcept
+{
+	auto pen = NppThemesShell::activeAppSurfacePen(role);
+	return pen == nullptr ? fallback : pen;
+}
+
+static COLORREF dockingColor(NppThemesShell::AppSurfaceRole role, COLORREF fallback) noexcept
+{
+	auto color = NppThemesShell::activeAppSurfaceColor(role);
+	return color == CLR_INVALID ? fallback : color;
+}
 
 static LRESULT CALLBACK hookProcMouse(int nCode, WPARAM wParam, LPARAM lParam)
 {
@@ -279,14 +303,15 @@ LRESULT DockingCont::runProcCaption(HWND hwnd, UINT Message, WPARAM wParam, LPAR
 	{
 		case WM_ERASEBKGND:
 		{
-			if (!NppDarkMode::isEnabled())
+			if (!useThemedDocking())
 			{
 				break;
 			}
 
 			RECT rc{};
 			::GetClientRect(hwnd, &rc);
-			::FillRect(reinterpret_cast<HDC>(wParam), &rc, NppDarkMode::getDlgBackgroundBrush());
+			::FillRect(reinterpret_cast<HDC>(wParam), &rc,
+				dockingBrush(NppThemesShell::AppSurfaceRole::SurfaceRaised, NppDarkMode::getDlgBackgroundBrush()));
 			return TRUE;
 		}
 
@@ -482,12 +507,17 @@ void DockingCont::drawCaptionItem(DRAWITEMSTRUCT *pDrawItemStruct)
 	// begin with paint
 	::SetBkMode(hDc, TRANSPARENT);
 
-	auto holdPen = static_cast<HPEN>(::SelectObject(hDc, NppDarkMode::isEnabled() ? NppDarkMode::getEdgePen() : hPen));
+	auto holdPen = static_cast<HPEN>(::SelectObject(hDc, useThemedDocking()
+		? dockingPen(NppThemesShell::AppSurfaceRole::Border, NppDarkMode::getEdgePen())
+		: hPen));
 
-	if (NppDarkMode::isEnabled())
+	if (useThemedDocking())
 	{
-		bgbrush = ::CreateSolidBrush(_isActive ? NppDarkMode::getCtrlBackgroundColor() : NppDarkMode::getBackgroundColor());
-		SetTextColor(hDc, NppDarkMode::getTextColor());
+		bgbrush = dockingBrush(_isActive
+			? NppThemesShell::AppSurfaceRole::SurfaceRaised
+			: NppThemesShell::AppSurfaceRole::SurfaceSecondary,
+			_isActive ? NppDarkMode::getCtrlBackgroundBrush() : NppDarkMode::getBackgroundBrush());
+		SetTextColor(hDc, dockingColor(NppThemesShell::AppSurfaceRole::DialogForeground, NppDarkMode::getTextColor()));
 	}
 	else
 	{
@@ -602,11 +632,14 @@ void DockingCont::drawCaptionItem(DRAWITEMSTRUCT *pDrawItemStruct)
 	}
 	::SelectObject(hDc, holdPen);
 	::DeleteObject(hPen);
-	::DeleteObject(bgbrush);
+	if (!useThemedDocking())
+	{
+		::DeleteObject(bgbrush);
+	}
 
 	// draw button
 
-	if (NppDarkMode::isEnabled())
+	if (useThemedDocking())
 	{
 		if (_hFont == nullptr)
 		{
@@ -627,7 +660,7 @@ void DockingCont::drawCaptionItem(DRAWITEMSTRUCT *pDrawItemStruct)
 
 		if ((_isMouseOver == TRUE) && (_isMouseDown == TRUE))
 		{
-			::SetTextColor(hDc, RGB(0xFF, 0xFF, 0xFF));
+			::SetTextColor(hDc, dockingColor(NppThemesShell::AppSurfaceRole::IconAccent, RGB(0xFF, 0xFF, 0xFF)));
 		}
 
 		::DrawText(hDc, L"✕", 1, &rc, DT_VCENTER | DT_CENTER | DT_SINGLELINE);
@@ -714,20 +747,21 @@ LRESULT DockingCont::runProcTab(HWND hwnd, UINT Message, WPARAM wParam, LPARAM l
 	{
 		case WM_ERASEBKGND:
 		{
-			if (!NppDarkMode::isEnabled())
+			if (!useThemedDocking())
 			{
 				break;
 			}
 
 			RECT rc {};
 			::GetClientRect(hwnd, &rc);
-			::FillRect(reinterpret_cast<HDC>(wParam), &rc, NppDarkMode::getDlgBackgroundBrush());
+			::FillRect(reinterpret_cast<HDC>(wParam), &rc,
+				dockingBrush(NppThemesShell::AppSurfaceRole::SurfaceSecondary, NppDarkMode::getDlgBackgroundBrush()));
 			return TRUE;
 		}
 
 		case WM_PAINT:
 		{
-			if (!NppDarkMode::isEnabled())
+			if (!useThemedDocking())
 			{
 				break;
 			}
@@ -740,11 +774,13 @@ LRESULT DockingCont::runProcTab(HWND hwnd, UINT Message, WPARAM wParam, LPARAM l
 
 			PAINTSTRUCT ps{};
 			HDC hdc = ::BeginPaint(hwnd, &ps);
-			::FillRect(hdc, &ps.rcPaint, NppDarkMode::getDlgBackgroundBrush());
+			::FillRect(hdc, &ps.rcPaint,
+				dockingBrush(NppThemesShell::AppSurfaceRole::SurfaceSecondary, NppDarkMode::getDlgBackgroundBrush()));
 
 			UINT id = ::GetDlgCtrlID(hwnd);
 
-			auto holdPen = static_cast<HPEN>(::SelectObject(hdc, NppDarkMode::getEdgePen()));
+			auto holdPen = static_cast<HPEN>(::SelectObject(hdc,
+				dockingPen(NppThemesShell::AppSurfaceRole::Divider, NppDarkMode::getEdgePen())));
 
 			HRGN holdClip = CreateRectRgn(0, 0, 0, 0);
 			if (1 != GetClipRgn(hdc, holdClip))
@@ -1074,9 +1110,12 @@ void DockingCont::drawTabItem(DRAWITEMSTRUCT* pDrawItemStruct)
 
 	const int onePadding = _dpiManager.scale(1);
 
-	if (NppDarkMode::isEnabled())
+	if (useThemedDocking())
 	{
-		::FillRect(hDc, &rc, isSelected ? NppDarkMode::getCtrlBackgroundBrush() : NppDarkMode::getBackgroundBrush());
+		::FillRect(hDc, &rc, dockingBrush(isSelected
+			? NppThemesShell::AppSurfaceRole::SurfaceRaised
+			: NppThemesShell::AppSurfaceRole::SurfaceSecondary,
+			isSelected ? NppDarkMode::getCtrlBackgroundBrush() : NppDarkMode::getBackgroundBrush()));
 		::OffsetRect(&rc, 0, -onePadding);
 	}
 	else if (isSelected) // draw orange bar
@@ -1108,14 +1147,16 @@ void DockingCont::drawTabItem(DRAWITEMSTRUCT* pDrawItemStruct)
 
 	if (isSelected)
 	{
-		if (NppDarkMode::isEnabled())
+		if (useThemedDocking())
 		{
 			const int textOffset = 3 * onePadding / 2 - 1;
 			::OffsetRect(&rc, 0, -textOffset);
 		}
 
 		COLORREF _unselectedColor = RGB(0, 0, 0);
-		::SetTextColor(hDc, NppDarkMode::isEnabled() ? NppDarkMode::getTextColor() : _unselectedColor);
+		::SetTextColor(hDc, useThemedDocking()
+			? dockingColor(NppThemesShell::AppSurfaceRole::DialogForeground, NppDarkMode::getTextColor())
+			: _unselectedColor);
 
 		// draw text
 		::SelectObject(hDc, _hFont);
@@ -1200,7 +1241,9 @@ intptr_t CALLBACK DockingCont::run_dlgProc(UINT Message, WPARAM wParam, LPARAM l
 			::ExcludeClipRect(hDC, rcClientTab.left, rcClientTab.top, rcClientTab.right, rcClientTab.bottom);
 			::ExcludeClipRect(hDC, rcCap.left, rcCap.top, rcCap.right, rcCap.bottom);
 
-			::FillRect(hDC, &rc, NppDarkMode::isEnabled() ? NppDarkMode::getDlgBackgroundBrush() : ::GetSysColorBrush(COLOR_3DFACE));
+			::FillRect(hDC, &rc, useThemedDocking()
+				? dockingBrush(NppThemesShell::AppSurfaceRole::DialogSurface, NppDarkMode::getDlgBackgroundBrush())
+				: ::GetSysColorBrush(COLOR_3DFACE));
 			return TRUE;
 		}
 
@@ -1215,7 +1258,7 @@ intptr_t CALLBACK DockingCont::run_dlgProc(UINT Message, WPARAM wParam, LPARAM l
 			// draw tab or caption
 			if (reinterpret_cast<DRAWITEMSTRUCT *>(lParam)->CtlID == IDC_TAB_CONT)
 			{
-				if (!NppDarkMode::isEnabled())
+				if (!useThemedDocking())
 				{
 					drawTabItem(reinterpret_cast<DRAWITEMSTRUCT*>(lParam));
 					return TRUE;

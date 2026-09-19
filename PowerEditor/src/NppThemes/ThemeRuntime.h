@@ -5,6 +5,7 @@
 #include <optional>
 #include <string>
 
+#include "AppSurfaceTheme.h"
 #include "DarkModeThemeAdapter.h"
 #include "StartupProfileStore.h"
 
@@ -17,7 +18,7 @@ struct ThemeRuntimeResult {
 
 class ThemeRuntime {
 public:
-    explicit ThemeRuntime(DarkModePaletteHost& host) noexcept;
+    ThemeRuntime(DarkModePaletteHost& host, AppSurfaceThemeHost& surfaceHost) noexcept;
     ~ThemeRuntime();
 
     [[nodiscard]] ThemeRuntimeResult initialize(const std::filesystem::path& settingsRoot,
@@ -33,8 +34,10 @@ public:
 
 private:
     DarkModePaletteHost& _host;
+    AppSurfaceThemeHost& _surfaceHost;
     ThemeService _service;
     std::unique_ptr<DarkModeThemeAdapter> _adapter;
+    std::unique_ptr<AppSurfaceThemeAdapter> _surfaceAdapter;
     std::unique_ptr<StartupProfileStore> _store;
     std::optional<nppthemes::ThemeProfile> _activeProfile;
     std::optional<bool> _originalRendererDark;

@@ -34,6 +34,7 @@
 #include "DockingDlgInterface.h"
 #include "Notepad_plus_msgs.h"
 #include "NppDarkMode.h"
+#include "NppThemes/PopupMenuTheme.h"
 #include "NppXml.h"
 #include "Parameters.h"
 #include "ProjectPanel_rc.h"
@@ -833,7 +834,7 @@ void ProjectPanel::showContextMenu(int x, int y)
 		// Make item selected
 		_treeView.selectItem(tvHitInfo.hItem);
 		HMENU hMenu = getMenuHandler(tvHitInfo.hItem);
-		TrackPopupMenu(hMenu,
+		NppThemesShell::trackThemedPopupMenu(hMenu,
 			NppParameters::getInstance().getNativeLangSpeaker()->isRTL() ? TPM_RIGHTALIGN | TPM_LAYOUTRTL : TPM_LEFTALIGN,
 			x, y, 0, _hSelf, NULL);
 	}
@@ -850,7 +851,7 @@ void ProjectPanel::showContextMenuFromMenuKey(HTREEITEM selectedItem, int x, int
 	if (selectedItem != NULL)
 	{
 		HMENU hMenu = getMenuHandler(selectedItem);
-		TrackPopupMenu(hMenu,
+		NppThemesShell::trackThemedPopupMenu(hMenu,
 			NppParameters::getInstance().getNativeLangSpeaker()->isRTL() ? TPM_RIGHTALIGN | TPM_LAYOUTRTL : TPM_LEFTALIGN,
 			x, y, 0, _hSelf, NULL);
 	}
@@ -942,7 +943,7 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 		case IDB_PROJECT_BTN:
 		{
 		  POINT p = getMenuDisplayPoint(0);
-		  TrackPopupMenu(_hWorkSpaceMenu,
+		  NppThemesShell::trackThemedPopupMenu(_hWorkSpaceMenu,
 			  NppParameters::getInstance().getNativeLangSpeaker()->isRTL() ? TPM_RIGHTALIGN | TPM_LAYOUTRTL : TPM_LEFTALIGN,
 			  p.x, p.y, 0, _hSelf, NULL);
 		}
@@ -960,7 +961,7 @@ void ProjectPanel::popupMenuCmd(int cmdID)
 			else if (nodeType == nodeType_file)
 				hMenu = _hFileMenu;
 			if (hMenu)
-				TrackPopupMenu(hMenu,
+				NppThemesShell::trackThemedPopupMenu(hMenu,
 					NppParameters::getInstance().getNativeLangSpeaker()->isRTL() ? TPM_RIGHTALIGN | TPM_LAYOUTRTL : TPM_LEFTALIGN,
 					p.x, p.y, 0, _hSelf, NULL);
 		}

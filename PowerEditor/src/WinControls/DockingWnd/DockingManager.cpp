@@ -17,6 +17,7 @@
 
 #include <stdexcept>
 #include "DockingManager.h"
+#include "NppThemes/AppSurfaceTheme.h"
 #include "DockingSplitter.h"
 #include "DockingCont.h"
 #include "Gripper.h"
@@ -218,14 +219,16 @@ LRESULT DockingManager::runProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
 	{
 		case WM_ERASEBKGND:
 		{
-			if (!NppDarkMode::isEnabled())
+			if (!NppDarkMode::isEnabled() && NppThemesShell::activeAppSurfaceTheme() == nullptr)
 			{
 				break;
 			}
 
 			RECT rc{};
 			::GetClientRect(hwnd, &rc);
-			::FillRect(reinterpret_cast<HDC>(wParam), &rc, NppDarkMode::getDlgBackgroundBrush());
+			auto brush = NppThemesShell::activeAppSurfaceBrush(NppThemesShell::AppSurfaceRole::DialogSurface);
+			::FillRect(reinterpret_cast<HDC>(wParam), &rc,
+				brush == nullptr ? NppDarkMode::getDlgBackgroundBrush() : brush);
 			return TRUE;
 		}
 

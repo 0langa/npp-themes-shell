@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "DockingDlgInterface.h"
+#include "NppThemes/AppSurfaceTheme.h"
 #include "TreeView.h"
 #include "fileBrowser_rc.h"
 
@@ -129,10 +130,12 @@ public:
 	}
 
 	void setBackgroundColor(COLORREF bgColour) override {
+		bgColour = NppThemesShell::activeAppSurfaceColorOr(NppThemesShell::AppSurfaceRole::ControlBackground, bgColour);
 		TreeView_SetBkColor(_treeView.getHSelf(), bgColour);
 	}
 
 	void setForegroundColor(COLORREF fgColour) override {
+		fgColour = NppThemesShell::activeAppSurfaceColorOr(NppThemesShell::AppSurfaceRole::ControlForeground, fgColour);
 		TreeView_SetTextColor(_treeView.getHSelf(), fgColour);
 	}
 

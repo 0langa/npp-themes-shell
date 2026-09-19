@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "DockingDlgInterface.h"
+#include "NppThemes/AppSurfaceTheme.h"
 #include "NppXml.h"
 #include "ProjectPanel_rc.h"
 #include "StaticDialog.h"
@@ -100,9 +101,11 @@ public:
 	bool checkIfNeedSave();
 
 	void setBackgroundColor(COLORREF bgColour) override {
+		bgColour = NppThemesShell::activeAppSurfaceColorOr(NppThemesShell::AppSurfaceRole::ControlBackground, bgColour);
 		TreeView_SetBkColor(_treeView.getHSelf(), bgColour);
 	}
 	void setForegroundColor(COLORREF fgColour) override {
+		fgColour = NppThemesShell::activeAppSurfaceColorOr(NppThemesShell::AppSurfaceRole::ControlForeground, fgColour);
 		TreeView_SetTextColor(_treeView.getHSelf(), fgColour);
 	}
 	bool enumWorkSpaceFiles(HTREEITEM tvFrom, const std::vector<std::wstring>& patterns, std::vector<std::wstring>& fileNames);

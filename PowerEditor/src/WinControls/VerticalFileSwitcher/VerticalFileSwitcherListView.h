@@ -20,6 +20,7 @@
 #include "Window.h"
 #include "TaskListDlg.h"
 #include "Buffer.h"
+#include "NppThemes/AppSurfaceTheme.h"
 
 #define SORT_DIRECTION_NONE     -1
 #define SORT_DIRECTION_UP     0
@@ -69,12 +70,14 @@ public:
 	}
 
 	void setBackgroundColor(COLORREF bgColour) {
+		bgColour = NppThemesShell::activeAppSurfaceColorOr(NppThemesShell::AppSurfaceRole::ControlBackground, bgColour);
 		ListView_SetBkColor(_hSelf, bgColour);
 		ListView_SetTextBkColor(_hSelf, bgColour);
 		redraw(true);
 	}
 
 	void setForegroundColor(COLORREF fgColour) {
+		fgColour = NppThemesShell::activeAppSurfaceColorOr(NppThemesShell::AppSurfaceRole::ControlForeground, fgColour);
 		ListView_SetTextColor(_hSelf, fgColour);
 		redraw(true);
 	}

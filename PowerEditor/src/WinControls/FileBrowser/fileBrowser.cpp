@@ -35,6 +35,7 @@
 #include "DockingDlgInterface.h"
 #include "Notepad_plus_msgs.h"
 #include "NppDarkMode.h"
+#include "NppThemes/PopupMenuTheme.h"
 #include "Parameters.h"
 #include "ReadDirectoryChanges.h"
 #include "RunDlg.h"
@@ -784,7 +785,7 @@ void FileBrowser::showContextMenu(int x, int y)
 
 	if (tvHitInfo.hItem == nullptr)
 	{
-		TrackPopupMenu(_hGlobalMenu, 
+		NppThemesShell::trackThemedPopupMenu(_hGlobalMenu,
 			NppParameters::getInstance().getNativeLangSpeaker()->isRTL() ? TPM_RIGHTALIGN | TPM_LAYOUTRTL : TPM_LEFTALIGN,
 			x, y, 0, _hSelf, NULL);
 	}
@@ -803,7 +804,7 @@ void FileBrowser::showContextMenu(int x, int y)
 		else //nodeType_file
 			hMenu = _hFileMenu;
 
-		TrackPopupMenu(hMenu, 
+		NppThemesShell::trackThemedPopupMenu(hMenu,
 			NppParameters::getInstance().getNativeLangSpeaker()->isRTL() ? TPM_RIGHTALIGN | TPM_LAYOUTRTL : TPM_LEFTALIGN,
 			x, y, 0, _hSelf, NULL);
 	}

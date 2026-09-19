@@ -6,7 +6,7 @@ namespace NppThemesShell {
 
 ThemeRuntime& themeRuntime() noexcept {
     static NppDarkModePaletteHost host;
-    static ThemeRuntime runtime(host);
+    static ThemeRuntime runtime(host, appSurfaceThemeHost());
     return runtime;
 }
 

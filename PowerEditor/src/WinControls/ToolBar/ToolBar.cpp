@@ -33,6 +33,7 @@
 #include "Notepad_plus_msgs.h"
 #include "NppConstants.h"
 #include "NppDarkMode.h"
+#include "NppThemes/PopupMenuTheme.h"
 #include "NppXml.h"
 #include "Parameters.h"
 #include "Window.h"
@@ -650,7 +651,7 @@ void ToolBar::doPopup(POINT chevPoint)
 			
 			++start;
 		}
-		TrackPopupMenu(menu, 0, chevPoint.x, chevPoint.y, 0, _hSelf, NULL);
+		NppThemesShell::trackThemedPopupMenu(menu, 0, chevPoint.x, chevPoint.y, 0, _hSelf, NULL);
 	}
 }
 

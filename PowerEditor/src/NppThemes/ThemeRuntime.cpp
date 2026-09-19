@@ -4,7 +4,8 @@
 
 namespace NppThemesShell {
 
-ThemeRuntime::ThemeRuntime(DarkModePaletteHost& host) noexcept : _host(host) {}
+ThemeRuntime::ThemeRuntime(DarkModePaletteHost& host, AppSurfaceThemeHost& surfaceHost) noexcept
+    : _host(host), _surfaceHost(surfaceHost) {}
 
 ThemeRuntime::~ThemeRuntime() {
     shutdown();
@@ -36,8 +37,14 @@ ThemeRuntimeResult ThemeRuntime::initialize(const std::filesystem::path& setting
     if (!adapter->activate()) {
         return {StartupProfileStatus::Rejected, "unable to activate host palette adapter"};
     }
+    auto surfaceAdapter = std::make_unique<AppSurfaceThemeAdapter>(_service, _surfaceHost);
+    if (!surfaceAdapter->activate()) {
+        adapter->deactivate();
+        return {StartupProfileStatus::Rejected, "unable to activate app-surface adapter"};
+    }
     _host.setRendererDark(loaded.profile->dark && !highContrastActive);
     if (!_store->completeApply(error)) {
+        surfaceAdapter->deactivate();
         adapter->deactivate();
         _host.setRendererDark(*_originalRendererDark);
         _originalRendererDark.reset();
@@ -45,6 +52,7 @@ ThemeRuntimeResult ThemeRuntime::initialize(const std::filesystem::path& setting
     }
 
     _adapter = std::move(adapter);
+    _surfaceAdapter = std::move(surfaceAdapter);
     _activeProfile = nppthemes::migrateProfileToV2(*loaded.profile);
     return {StartupProfileStatus::Ready, {}};
 }
@@ -88,6 +96,14 @@ bool ThemeRuntime::selectProfile(const nppthemes::ThemeProfile& profile, std::st
         }
         _adapter = std::move(adapter);
     }
+    if (!_surfaceAdapter) {
+        auto surfaceAdapter = std::make_unique<AppSurfaceThemeAdapter>(_service, _surfaceHost);
+        if (!surfaceAdapter->activate()) {
+            error = "unable to activate app-surface adapter";
+            return false;
+        }
+        _surfaceAdapter = std::move(surfaceAdapter);
+    }
     _host.setRendererDark(migrated.dark && !_highContrastActive);
     _activeProfile = std::move(migrated);
 
@@ -126,6 +142,10 @@ void ThemeRuntime::setHighContrastActive(const bool active) noexcept {
 }
 
 void ThemeRuntime::shutdown() noexcept {
+    if (_surfaceAdapter) {
+        _surfaceAdapter->deactivate();
+        _surfaceAdapter.reset();
+    }
     if (_adapter) {
         _adapter->deactivate();
         _adapter.reset();
@@ -138,7 +158,7 @@ void ThemeRuntime::shutdown() noexcept {
 }
 
 bool ThemeRuntime::isActive() const noexcept {
-    return _adapter && _adapter->isActive();
+    return _adapter && _adapter->isActive() && _surfaceAdapter && _surfaceAdapter->isActive();
 }
 
 const nppthemes::ThemeProfile* ThemeRuntime::activeProfile() const noexcept {

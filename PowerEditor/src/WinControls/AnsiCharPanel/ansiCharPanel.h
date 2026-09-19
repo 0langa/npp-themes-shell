@@ -21,6 +21,7 @@
 #include <commctrl.h>
 
 #include "DockingDlgInterface.h"
+#include "NppThemes/AppSurfaceTheme.h"
 #include "ansiCharPanel_rc.h"
 #include "asciiListView.h"
 
@@ -46,12 +47,14 @@ public:
 	void insertString(LPWSTR string2insert) const;
 
 	void setBackgroundColor(COLORREF bgColour) override {
+		bgColour = NppThemesShell::activeAppSurfaceColorOr(NppThemesShell::AppSurfaceRole::ControlBackground, bgColour);
 		ListView_SetBkColor(_listView.getHSelf(), bgColour);
 		ListView_SetTextBkColor(_listView.getHSelf(), bgColour);
 		_listView.redraw(true);
 	}
 
 	void setForegroundColor(COLORREF fgColour) override {
+		fgColour = NppThemesShell::activeAppSurfaceColorOr(NppThemesShell::AppSurfaceRole::ControlForeground, fgColour);
 		ListView_SetTextColor(_listView.getHSelf(), fgColour);
 		_listView.redraw(true);
 	}

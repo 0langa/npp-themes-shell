@@ -26,11 +26,11 @@ ARM64 cross-build remains unavailable locally because the installed VS 2022 v143
 
 ## ThemeService foundation
 
-The first fork-owned ThemeService foundation compiles inside both local Release architectures. Its standalone behavior suite covers validated initialization, atomic invalid-profile rejection, preview cancel/commit, subscription lifetime, generation changes, forced High Contrast native fallback, host-palette mapping, and exact native-palette restoration. The cross-host conformance suite compiles directly from the pinned shared subtree and compares canonical output with its golden fixture.
+The first fork-owned ThemeService foundation compiles inside both local Release architectures. Its standalone behavior suite covers validated initialization, atomic invalid-profile rejection, preview cancel/commit, subscription lifetime, generation changes, forced High Contrast native fallback, host-palette mapping, app-surface publication, and exact native-state restoration. The cross-host conformance suite compiles directly from the pinned shared subtree and compares canonical output with its golden fixture.
 
 Safe startup persistence is wired after Notepad++ settings and dark-mode initialization. Tests cover missing-profile no-write behavior, regular-file and 1 MiB limits, malformed input, marker-required writes/removal, durable apply markers, incomplete-apply recovery, invalid runtime selection without mutation, atomic selection persistence, disable/reselect, light/dark renderer coordination, live High Contrast restore/resume, and shutdown restoration.
 
-Release x64 and Win32 builds pass with the top-level NppThemes menu. Live x64 validation selects Graphite and Paper, observes immediate full host renderer refresh in both directions, confirms menu status/check state, confirms marker-free canonical profile replacement, disables to exact native rendering with profile removal, and confirms Graphite automatically reactivates after restart. Physical ARM64 behavior remains unverified.
+Release x64 and Win32 builds pass with the top-level NppThemes menu. Live x64 validation selects Graphite and Paper and observes immediate editor, main-menu, document-tab, status-bar, and centralized host-renderer changes in both directions. It confirms semantic C++ styling, menu status/check state, native editor/font/chrome restoration after disable, marker-free canonical profile replacement, and automatic Graphite reactivation after restart. Toolbar, dedicated popup-menu rendering, docking, panels, and dialogs remain incomplete. Physical ARM64 behavior remains unverified.
 
 Local verification commands:
 

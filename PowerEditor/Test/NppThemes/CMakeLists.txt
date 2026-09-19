@@ -27,21 +27,23 @@ target_link_libraries(NppThemesConformance PRIVATE NppThemesShellCore)
 
 add_executable(NppThemesThemeServiceTests
     ThemeServiceTests.cpp
+    "${NPP_SOURCE_DIR}/NppThemes/AppSurfaceTheme.cpp"
     "${NPP_SOURCE_DIR}/NppThemes/DarkModeThemeAdapter.cpp"
     "${NPP_SOURCE_DIR}/NppThemes/ThemeService.cpp"
 )
 target_include_directories(NppThemesThemeServiceTests PRIVATE "${NPP_SOURCE_DIR}")
-target_link_libraries(NppThemesThemeServiceTests PRIVATE NppThemesShellCore)
+target_link_libraries(NppThemesThemeServiceTests PRIVATE NppThemesShellCore gdi32)
 
 add_executable(NppThemesStartupProfileTests
     StartupProfileTests.cpp
+    "${NPP_SOURCE_DIR}/NppThemes/AppSurfaceTheme.cpp"
     "${NPP_SOURCE_DIR}/NppThemes/DarkModeThemeAdapter.cpp"
     "${NPP_SOURCE_DIR}/NppThemes/StartupProfileStore.cpp"
     "${NPP_SOURCE_DIR}/NppThemes/ThemeRuntime.cpp"
     "${NPP_SOURCE_DIR}/NppThemes/ThemeService.cpp"
 )
 target_include_directories(NppThemesStartupProfileTests PRIVATE "${NPP_SOURCE_DIR}")
-target_link_libraries(NppThemesStartupProfileTests PRIVATE NppThemesShellCore)
+target_link_libraries(NppThemesStartupProfileTests PRIVATE NppThemesShellCore gdi32)
 
 if(MSVC)
     foreach(target NppThemesShellCore NppThemesConformance NppThemesThemeServiceTests NppThemesStartupProfileTests)

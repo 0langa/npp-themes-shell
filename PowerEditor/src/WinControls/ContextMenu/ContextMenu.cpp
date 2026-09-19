@@ -142,7 +142,7 @@ void ContextMenu::display(HWND hwnd) const
 
 	const NativeLangSpeaker* nativeLangSpeaker = NppParameters::getInstance().getNativeLangSpeaker();
 	const UINT flags = nativeLangSpeaker->isRTL() ? (TPM_RIGHTALIGN | TPM_RIGHTBUTTON | TPM_LAYOUTRTL) : (TPM_LEFTALIGN | TPM_LEFTBUTTON);
-	::TrackPopupMenuEx(_hMenu, flags | TPM_VERTICAL, rcItem.left, rcItem.bottom, _hParent, &tpm);
+	NppThemesShell::trackThemedPopupMenuEx(_hMenu, flags | TPM_VERTICAL, rcItem.left, rcItem.bottom, _hParent, &tpm);
 }
 
 void ContextMenu::destroy()

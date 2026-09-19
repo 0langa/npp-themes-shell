@@ -18,6 +18,7 @@
 #pragma once
 
 #include "DockingDlgInterface.h"
+#include "NppThemes/AppSurfaceTheme.h"
 #include "clipboardHistoryPanel_rc.h"
 #include <vector>
 
@@ -69,10 +70,10 @@ public:
 	int getClipboardDataIndex(const ClipboardDataInfo& cbd);
 
 	void setBackgroundColor(COLORREF bgColour) override {
-		_lbBgColor = bgColour;
+		_lbBgColor = NppThemesShell::activeAppSurfaceColorOr(NppThemesShell::AppSurfaceRole::ControlBackground, bgColour);
 	}
 	void setForegroundColor(COLORREF fgColour) override {
-		_lbFgColor = fgColour;
+		_lbFgColor = NppThemesShell::activeAppSurfaceColorOr(NppThemesShell::AppSurfaceRole::ControlForeground, fgColour);
 	}
 
 	void drawItem(LPDRAWITEMSTRUCT lpDrawItemStruct);

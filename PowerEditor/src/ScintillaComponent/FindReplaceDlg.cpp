@@ -31,6 +31,7 @@
 #include <string>
 
 #include "NppConstants.h"
+#include "NppThemes/PopupMenuTheme.h"
 
 using namespace std;
 
@@ -6293,7 +6294,7 @@ intptr_t CALLBACK Finder::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam
 
 				scintillaContextmenu.checkItem(NPPM_INTERNAL_SCINTILLAFINDERWRAP, _longLinesAreWrapped);
 
-				::TrackPopupMenu(scintillaContextmenu.getMenuHandle(),
+				NppThemesShell::trackThemedPopupMenu(scintillaContextmenu.getMenuHandle(),
 					NppParameters::getInstance().getNativeLangSpeaker()->isRTL() ? TPM_RIGHTALIGN | TPM_LAYOUTRTL : TPM_LEFTALIGN,
 					p.x, p.y, 0, _hSelf, NULL);
 				return TRUE;

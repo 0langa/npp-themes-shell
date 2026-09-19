@@ -33,6 +33,7 @@
 #include "fileBrowser.h"
 #include "NppDarkMode.h"
 #include "NppThemes/ThemeRuntime.h"
+#include "NppThemes/PopupMenuTheme.h"
 #include "NppConstants.h"
 
 using namespace std;
@@ -276,7 +277,15 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			}
 
 			// Host refresh can reset its runtime color tone. Apply NppThemes policy last.
-			NppThemesShell::themeRuntime().setHighContrastActive(NppDarkMode::isHighContrast());
+			auto& themeRuntime = NppThemesShell::themeRuntime();
+			const bool wasHighContrast = themeRuntime.service().isHighContrastActive();
+			const bool isHighContrast = NppDarkMode::isHighContrast();
+			themeRuntime.setHighContrastActive(isHighContrast);
+			if (themeRuntime.activeProfile() && wasHighContrast != isHighContrast)
+			{
+				// The app-surface adapter was cleared or resumed; reload native/custom editor styles too.
+				refreshDarkMode(true);
+			}
 
 			// let the Scintilla to update according to the possible changed OS settings
 			// (mouse wheel vertical & horizontal scroll amount, DirectWrite rendering params, base elements, style etc.)
@@ -2951,7 +2960,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 					hTrayIconMenu = ::GetSubMenu(hmenu, 0);
 					_nativeLangSpeaker.changeLangTrayIconContexMenu(hTrayIconMenu);
 					SetForegroundWindow(hwnd);
-					TrackPopupMenu(hTrayIconMenu, TPM_LEFTALIGN, p.x, p.y, 0, hwnd, NULL);
+					NppThemesShell::trackThemedPopupMenu(hTrayIconMenu, TPM_LEFTALIGN, p.x, p.y, 0, hwnd, NULL);
 					PostMessage(hwnd, WM_NULL, 0, 0);
 					DestroyMenu(hmenu);
 					return TRUE;

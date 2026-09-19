@@ -1,7 +1,10 @@
 #include <cstdlib>
 #include <iostream>
+#include <optional>
 #include <string>
+#include <utility>
 
+#include "NppThemes/AppSurfaceTheme.h"
 #include "NppThemes/DarkModeThemeAdapter.h"
 #include "NppThemes/ThemeService.h"
 
@@ -46,6 +49,23 @@ public:
     int applyCount{};
     NppThemesShell::DarkModePaletteState current{7, 0x010203U, 0x040506U};
     bool dark{};
+};
+
+class RecordingSurfaceHost final : public NppThemesShell::AppSurfaceThemeHost {
+public:
+    [[nodiscard]] std::optional<NppThemesShell::AppSurfaceThemeState> capture() const override {
+        ++captureCount;
+        return current;
+    }
+
+    void apply(std::optional<NppThemesShell::AppSurfaceThemeState> state) override {
+        ++applyCount;
+        current = std::move(state);
+    }
+
+    mutable int captureCount{};
+    int applyCount{};
+    std::optional<NppThemesShell::AppSurfaceThemeState> current;
 };
 
 } // namespace
@@ -128,6 +148,48 @@ int main() {
     adapter.deactivate();
     require(host.current == nativePalette, "adapter deactivation restores native host palette");
     require(!adapter.isActive(), "adapter reports inactive after deactivation");
+
+    RecordingSurfaceHost surfaceHost;
+    NppThemesShell::AppSurfaceThemeAdapter surfaceAdapter(service, surfaceHost);
+    require(surfaceAdapter.activate(), "app-surface adapter activates");
+    require(surfaceHost.captureCount == 1, "app-surface adapter captures prior state once");
+    require(surfaceHost.current && surfaceHost.current->profile.id == service.snapshot()->profile.id,
+            "app-surface adapter publishes active profile");
+    require(surfaceHost.current && surfaceHost.current->palette.tabActive == service.snapshot()->palette.tabActive,
+            "app-surface adapter publishes resolved tokens");
+    require(NppThemesShell::appSurfaceRoleColor(surfaceHost.current->palette,
+                                                NppThemesShell::AppSurfaceRole::ToolbarHover) ==
+                surfaceHost.current->palette.toolbarHover,
+            "app-surface role mapping preserves dedicated toolbar token");
+    require(NppThemesShell::appSurfaceRoleColor(surfaceHost.current->palette,
+                                                NppThemesShell::AppSurfaceRole::DialogSurface) ==
+                surfaceHost.current->palette.dialogSurface,
+            "app-surface role mapping preserves dedicated dialog token");
+
+    auto& productionSurfaceHost = NppThemesShell::appSurfaceThemeHost();
+    const auto originalSurfaceState = productionSurfaceHost.capture();
+    productionSurfaceHost.apply(*surfaceHost.current);
+    require(NppThemesShell::activeAppSurfaceColor(NppThemesShell::AppSurfaceRole::MenuBackground) != CLR_INVALID,
+            "active surface exposes popup color");
+    require(NppThemesShell::activeAppSurfaceBrush(NppThemesShell::AppSurfaceRole::ToolbarBackground) != nullptr,
+            "active surface caches toolbar brush");
+    require(NppThemesShell::activeAppSurfacePen(NppThemesShell::AppSurfaceRole::Divider) != nullptr,
+            "active surface caches docking divider pen");
+    productionSurfaceHost.apply(std::nullopt);
+    require(NppThemesShell::activeAppSurfaceColorOr(NppThemesShell::AppSurfaceRole::ControlBackground,
+                                                     RGB(1, 2, 3)) == RGB(1, 2, 3),
+            "inactive surface returns caller fallback for panel controls");
+    productionSurfaceHost.apply(originalSurfaceState);
+
+    service.setHighContrastActive(true);
+    require(!surfaceHost.current, "High Contrast clears custom app-surface state");
+    service.setHighContrastActive(false);
+    require(surfaceHost.captureCount == 2, "app-surface adapter recaptures after native fallback");
+    require(surfaceHost.current.has_value(), "app-surface state resumes after High Contrast");
+
+    surfaceAdapter.deactivate();
+    require(!surfaceHost.current, "app-surface adapter restores prior native state");
+    require(!surfaceAdapter.isActive(), "app-surface adapter reports inactive after deactivation");
 
     return 0;
 }

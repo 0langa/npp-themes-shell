@@ -25,6 +25,7 @@
 #include <string>
 
 #include "Parameters.h"
+#include "NppThemes/PopupMenuTheme.h"
 #include "Splitter.h"
 #include "Window.h"
 #include "localization.h"
@@ -266,7 +267,7 @@ LRESULT SplitterContainer::runProc(UINT message, WPARAM wParam, LPARAM lParam)
 					::InsertMenu(_hPopupMenu, 0, MF_BYPOSITION, ROTATION_RIGHT, textRight.c_str());
 				}
 
-				::TrackPopupMenu(_hPopupMenu, TPM_LEFTALIGN, p.x, p.y, 0, _hSelf, NULL);
+				NppThemesShell::trackThemedPopupMenu(_hPopupMenu, TPM_LEFTALIGN, p.x, p.y, 0, _hSelf, NULL);
 			}
 			return TRUE;
 		}

@@ -21,6 +21,7 @@
 #include "xmlMatchedTagsHighlighter.h"
 #include "VerticalFileSwitcher.h"
 #include "NppDarkMode.h"
+#include "NppThemes/PopupMenuTheme.h"
 #include "documentMap.h"
 #include "Common.h"
 #include <stack>
@@ -190,7 +191,7 @@ BOOL Notepad_plus::notify(SCNotification *notification)
 					HMENU hBookmarkMenu = ::GetSubMenu(hSearchMenu, menuPos._y);
 					if (hBookmarkMenu)
 					{
-						TrackPopupMenu(hBookmarkMenu, 0, p.x, p.y, 0, _pPublicInterface->getHSelf(), NULL);
+						NppThemesShell::trackThemedPopupMenu(hBookmarkMenu, 0, p.x, p.y, 0, _pPublicInterface->getHSelf(), NULL);
 					}
 				}
 			}
@@ -961,7 +962,7 @@ BOOL Notepad_plus::notify(SCNotification *notification)
 					POINT p;
 					::GetCursorPos(&p);
 					HMENU hLangMenu = ::GetSubMenu(_mainMenuHandle, MENUINDEX_LANGUAGE);
-					TrackPopupMenu(hLangMenu, 0, p.x, p.y, 0, _pPublicInterface->getHSelf(), NULL);
+					NppThemesShell::trackThemedPopupMenu(hLangMenu, 0, p.x, p.y, 0, _pPublicInterface->getHSelf(), NULL);
 				}
 				else if (lpnm->dwItemSpec == DWORD(STATUSBAR_EOF_FORMAT))
 				{
@@ -974,14 +975,14 @@ BOOL Notepad_plus::notify(SCNotification *notification)
 					HMENU hEolFormatMenu = ::GetSubMenu(hEditMenu, menuPos._y);
 					if (!hEolFormatMenu)
 						return TRUE;
-					TrackPopupMenu(hEolFormatMenu, 0, p.x, p.y, 0, _pPublicInterface->getHSelf(), NULL);
+					NppThemesShell::trackThemedPopupMenu(hEolFormatMenu, 0, p.x, p.y, 0, _pPublicInterface->getHSelf(), NULL);
 				}
 				else if (lpnm->dwItemSpec == DWORD(STATUSBAR_UNICODE_TYPE))
 				{
 					POINT p;
 					::GetCursorPos(&p);
 					HMENU hLangMenu = ::GetSubMenu(_mainMenuHandle, MENUINDEX_FORMAT);
-					TrackPopupMenu(hLangMenu, 0, p.x, p.y, 0, _pPublicInterface->getHSelf(), NULL);
+					NppThemesShell::trackThemedPopupMenu(hLangMenu, 0, p.x, p.y, 0, _pPublicInterface->getHSelf(), NULL);
 				}
 			}
 			break;
@@ -1006,7 +1007,7 @@ BOOL Notepad_plus::notify(SCNotification *notification)
 				if (lpnm->dwItemSpec == DWORD(STATUSBAR_DOC_TYPE))
 				{
 					HMENU hLangMenu = ::GetSubMenu(_mainMenuHandle, MENUINDEX_LANGUAGE);
-					TrackPopupMenu(hLangMenu, 0, p.x, p.y, 0, _pPublicInterface->getHSelf(), NULL);
+					NppThemesShell::trackThemedPopupMenu(hLangMenu, 0, p.x, p.y, 0, _pPublicInterface->getHSelf(), NULL);
 				}
 				else if (lpnm->dwItemSpec == DWORD(STATUSBAR_EOF_FORMAT))
 				{
@@ -1017,14 +1018,14 @@ BOOL Notepad_plus::notify(SCNotification *notification)
 					HMENU hEolFormatMenu = ::GetSubMenu(hEditMenu, menuPos._y);
 					if (!hEolFormatMenu)
 						return TRUE;
-					TrackPopupMenu(hEolFormatMenu, 0, p.x, p.y, 0, _pPublicInterface->getHSelf(), NULL);
+					NppThemesShell::trackThemedPopupMenu(hEolFormatMenu, 0, p.x, p.y, 0, _pPublicInterface->getHSelf(), NULL);
 				}
 				else if (lpnm->dwItemSpec == DWORD(STATUSBAR_UNICODE_TYPE))
 				{
 					POINT cursorPos;
 					::GetCursorPos(&cursorPos);
 					HMENU hLangMenu = ::GetSubMenu(_mainMenuHandle, MENUINDEX_FORMAT);
-					TrackPopupMenu(hLangMenu, 0, cursorPos.x, cursorPos.y, 0, _pPublicInterface->getHSelf(), NULL);
+					NppThemesShell::trackThemedPopupMenu(hLangMenu, 0, cursorPos.x, cursorPos.y, 0, _pPublicInterface->getHSelf(), NULL);
 				}
 				return TRUE;
 			}

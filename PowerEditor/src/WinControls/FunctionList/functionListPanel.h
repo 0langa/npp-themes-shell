@@ -20,6 +20,7 @@
 #include "functionListPanel_rc.h"
 #include "functionParser.h"
 #include "TreeView.h"
+#include "NppThemes/AppSurfaceTheme.h"
 
 #define FL_PANELTITLE     L"Function List"
 #define FL_FUNCTIONLISTROOTNODE "FunctionList"
@@ -76,11 +77,13 @@ public:
 	void init(HINSTANCE hInst, HWND hPere, ScintillaEditView **ppEditView);
 
 	void setBackgroundColor(COLORREF bgColour) override {
+		bgColour = NppThemesShell::activeAppSurfaceColorOr(NppThemesShell::AppSurfaceRole::ControlBackground, bgColour);
 		TreeView_SetBkColor(_treeView.getHSelf(), bgColour);
 		TreeView_SetBkColor(_treeViewSearchResult.getHSelf(), bgColour);
 	}
 
 	void setForegroundColor(COLORREF fgColour) override {
+		fgColour = NppThemesShell::activeAppSurfaceColorOr(NppThemesShell::AppSurfaceRole::ControlForeground, fgColour);
 		TreeView_SetTextColor(_treeView.getHSelf(), fgColour);
 		TreeView_SetTextColor(_treeViewSearchResult.getHSelf(), fgColour);
 	}
